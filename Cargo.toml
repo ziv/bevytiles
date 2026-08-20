@@ -1,0 +1,27 @@
+[package]
+name = "bevytiles"
+version = "0.1.0"
+edition = "2021"
+description = "Geo-spatial terrain streaming engine for Bevy — a port of raytiles"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+bevy = "0.16"
+crossbeam-channel = "0.5"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+ureq = "2"
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
+tiny_http = "0.12"
+
+# dev builds of bevy are unusably slow without optimized deps
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
+
+[[example]]
+name = "demo"
