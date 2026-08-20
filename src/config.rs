@@ -5,8 +5,16 @@ use bevy::prelude::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
+/// Lowest zoom level the engine supports; `WorldConfig::base_zoom` must not
+/// go below it.
 pub const MIN_ZOOM: u8 = 9;
+/// Highest zoom level the engine supports; `WorldConfig::max_zoom` must not
+/// exceed it. Above `NetworkConfig::native_terrain_zoom` heightmaps are
+/// synthesized, so only imagery needs to exist natively this deep.
 pub const MAX_ZOOM: u8 = 22;
+/// Number of zoom levels in `[MIN_ZOOM, MAX_ZOOM]`; sizes every per-zoom
+/// array (`thresholds`, `skirt_overlap`). Slot `i` applies to zoom
+/// `base_zoom + i`; slots beyond `max_zoom - base_zoom` are ignored.
 pub const ZOOM_LEVELS: usize = (MAX_ZOOM - MIN_ZOOM + 1) as usize; // 14
 
 /// Highest terrain elevation the culling AABBs must cover (Everest, meters).
@@ -17,8 +25,10 @@ const EQUATOR_CIRCUMFERENCE_M: f64 = 40_075_016.686;
 /// World topology. Effectively immutable once the plugin started.
 #[derive(Resource, Clone)]
 pub struct WorldConfig {
-    /// Anchor in tile coordinates at `base_zoom` (world origin sits there).
+    /// Anchor tile X at `base_zoom`: the world origin sits at this tile's
+    /// corner. Overwritten by [`WorldConfig::from_lat_lon`].
     pub anchor_x: i32,
+    /// Anchor tile Z (slippy-map `y`) at `base_zoom`.
     pub anchor_z: i32,
     /// Lowest LOD zoom ever loaded (>= MIN_ZOOM).
     pub base_zoom: u8,
@@ -112,18 +122,24 @@ impl Default for StreamingConfig {
 /// and the plugin pushes it to every live material.
 #[derive(Resource, Clone)]
 pub struct RenderingConfig {
+    /// Distance (meters) at which atmospheric fog starts blending in.
     pub fog_start: f32,
+    /// Distance (meters) at which fog fully replaces the terrain color.
     pub fog_end: f32,
     /// Vertical drop (meters) of skirt geometry below tile edges; 0 disables.
     pub skirt_drop: f32,
     /// Match this to your sky color for a seamless horizon.
     pub fog_color: Color,
+    /// World ambient light color; drives day/night/weather changes.
     pub ambient: Color,
     /// Normalized internally; magnitude is irrelevant.
     pub sun_direction: Vec3,
+    /// Sun light intensity — contrast between lit and shaded slopes.
     pub sun_scale: f32,
     /// Terrain relief exaggeration (drama factor).
     pub height_scale: f32,
+    /// Normal-map contrast multiplier. Higher looks bumpier; too high causes
+    /// lighting artifacts on steep encoded normals.
     pub normals_scale: f32,
 }
 
@@ -146,19 +162,25 @@ impl Default for RenderingConfig {
 /// Tile download / cache parameters.
 #[derive(Resource, Clone)]
 pub struct NetworkConfig {
+    /// Number of background download/synthesis worker threads. Downloads are
+    /// I/O bound, so more threads than cores is fine.
     pub threads: usize,
     /// Root of the on-disk cache: `cache_dir/{texture,heightmap,normals}/z/x/y.png`.
     pub cache_dir: PathBuf,
     /// Provider URL templates with `:zoom:`/`:x:`/`:y:` tokens. The Esri
     /// texture default uses `zoom/y/x` order — that swap is intentional.
     pub texture_url: String,
+    /// Terrarium heightmap URL template (`zoom/x/y` order).
     pub heightmap_url: String,
+    /// Normal-map URL template (`zoom/x/y` order).
     pub normals_url: String,
     /// Highest zoom the terrain providers serve natively (Mapzen: 15). Above
     /// it heightmaps are synthesized from ancestors and normals default; no
     /// HTTP is attempted for either.
     pub native_terrain_zoom: u8,
+    /// HTTP connection timeout per request.
     pub connect_timeout: Duration,
+    /// HTTP read timeout per request.
     pub read_timeout: Duration,
 }
 
@@ -184,6 +206,9 @@ impl Default for NetworkConfig {
 /// rebakes tile transforms whenever it changes.
 #[derive(Resource, Default, Clone)]
 pub struct TerrainAnchor {
+    /// The current user-space offset of the world origin. Mutate only as part
+    /// of a rebase that shifts the camera and every user-space entity by the
+    /// same amount.
     pub world_offset: Vec3,
 }
 
@@ -195,6 +220,7 @@ pub struct TerrainCamera;
 /// only once a desired set exists and is fully serviced.
 #[derive(Resource)]
 pub struct TerrainStatus {
+    /// True during the initial load only.
     pub loading: bool,
     /// Fraction of the desired set that is resident, [0, 1].
     pub progress: f32,

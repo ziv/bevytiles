@@ -8,16 +8,26 @@ use bevy::math::Vec3;
 /// Anchor-relative tile identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TileKey {
+    /// Zoom level in `[base_zoom, max_zoom]`.
     pub zoom: u8,
+    /// Tile column, relative to the world anchor at this zoom.
     pub x: i32,
+    /// Tile row (slippy-map `y`, world `z`), anchor-relative.
     pub z: i32,
 }
 
+/// The subset of the configuration the desired-set policy needs. Derived
+/// values (per-zoom sizes, squared thresholds, horizon radius) are computed
+/// inside [`desired_tiles`] so the policy stays stateless.
 #[derive(Clone)]
 pub struct LodOptions {
+    /// Lowest zoom in the quadtree (the disc scan runs at this level).
     pub base_zoom: u8,
+    /// Highest zoom; recursion accepts unconditionally when it reaches it.
     pub max_zoom: u8,
+    /// World size (meters) of one tile at `base_zoom`.
     pub base_tile_size: f32,
+    /// Radius, in base-zoom tiles, of the disc scanned around the camera.
     pub radius: i32,
     /// Plain meters; squared internally (in f64 — an f32 square can overflow).
     pub thresholds: [f32; ZOOM_LEVELS],
@@ -110,6 +120,8 @@ pub fn dist_sq_to_tile_xz(cam: Vec3, zoom_size: f64, x: i32, z: i32) -> f64 {
     dx * dx + dz * dz
 }
 
+/// True when `key`'s center lies beyond the horizon for the camera's
+/// altitude (XZ distance only) — used by eviction's beyond-horizon rule.
 pub fn out_of_horizon(cam: Vec3, zoom_size: f64, key: TileKey) -> bool {
     dist_sq_to_tile_xz(cam, zoom_size, key.x, key.z) > horizon_sq(cam.y)
 }

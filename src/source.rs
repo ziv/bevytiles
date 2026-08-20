@@ -26,24 +26,39 @@ use std::thread::JoinHandle;
 /// about world anchoring).
 #[derive(Clone, Copy, Debug)]
 pub struct TileRequest {
+    /// Anchor-relative identity, used for dedup/cancel and echoed in the
+    /// payload/drop.
     pub key: TileKey,
+    /// Absolute provider tile column at `key.zoom`.
     pub x: i32,
+    /// Absolute provider tile row at `key.zoom`.
     pub z: i32,
 }
 
 /// A completed tile: all three assets decoded, plus the CPU height grid
 /// (built here so the main thread never pays for it).
 pub struct TilePayload {
+    /// The request's anchor-relative key.
     pub key: TileKey,
+    /// Decoded satellite imagery.
     pub albedo: RgbaImage,
+    /// Decoded (or synthesized) Terrarium heightmap.
     pub height: RgbImage,
+    /// Decoded normal map, or the flat default.
     pub normals: RgbImage,
+    /// CPU height grid derived from `height` on the worker.
     pub grid: HeightGrid,
 }
 
-/// A tile that will not arrive.
+/// A tile that will not arrive. Every [`TileSource::request`] is answered by
+/// exactly one [`TilePayload`] or one of these.
 pub enum TileDrop {
+    /// The job was cancelled before completing. If the tile is wanted again,
+    /// re-request immediately (the camera came back).
     Cancelled(TileKey),
+    /// Fetch or decode failed; the string is the reason. Callers should wait
+    /// for the next desired-set rebuild rather than hot-retrying a failing
+    /// provider.
     Failed(TileKey, String),
 }
 
@@ -68,6 +83,9 @@ struct Shared {
     derive_done: Arc<Mutex<HashSet<TileKey>>>,
 }
 
+/// The background tile fetcher. Owns the worker threads; hand out requests
+/// and drain results once per frame. Dropping it disconnects the queues and
+/// joins the workers (an in-flight HTTP read may delay that by its timeout).
 pub struct TileSource {
     cfg: Arc<NetworkConfig>,
     shared: Shared,
@@ -79,6 +97,10 @@ pub struct TileSource {
 }
 
 impl TileSource {
+    /// Spawn the worker pool.
+    ///
+    /// # Panics
+    /// If `cfg.native_terrain_zoom` lies outside `[MIN_ZOOM, MAX_ZOOM]`.
     pub fn new(cfg: &NetworkConfig) -> Self {
         assert!(
             (crate::config::MIN_ZOOM..=crate::config::MAX_ZOOM).contains(&cfg.native_terrain_zoom),

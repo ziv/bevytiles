@@ -16,31 +16,53 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use std::collections::{HashMap, HashSet, VecDeque};
 
+/// Marker + data component on every resident tile entity.
 #[derive(Component)]
 pub struct Tile {
+    /// Anchor-relative identity (also the [`TileIndex`] / grid map key).
     pub key: TileKey,
+    /// World size of this tile in meters.
     pub size: f32,
-    /// Absolute tile center (f64 — precision far from the anchor).
+    /// Absolute tile center X (f64 — precision far from the anchor; the
+    /// user-space transform is `abs + world_offset`, cast to f32 once).
     pub abs_x: f64,
+    /// Absolute tile center Z.
     pub abs_z: f64,
 }
 
+/// The tile lifecycle bookkeeping (raytiles' `tile_store` maps): which tiles
+/// exist, which should exist, which are being fetched.
 #[derive(Resource, Default)]
 pub struct TileIndex {
+    /// Resident tiles → their entities. In lockstep with [`HeightGrids`] and
+    /// the spawned [`Tile`] entities.
     pub resident: HashMap<TileKey, Entity>,
+    /// What the LOD policy wants resident for the current camera position;
+    /// rebuilt by [`update_desired`].
     pub desired: HashSet<TileKey>,
+    /// Keys handed to the source and not yet answered (payload or drop).
     pub loading: HashSet<TileKey>,
 }
 
+/// Shared per-zoom grid meshes, indexed `zoom - base_zoom`. Resolution
+/// doubles per zoom (4 → 256 quads/side); UVs span `[0, 1]` because the
+/// vertex shader samples the heightmap by UV. Built once in [`setup`].
 #[derive(Resource)]
 pub struct ZoomMeshes(pub Vec<Handle<Mesh>>);
 
+/// The worker-pool [`TileSource`], wrapped as a resource (created in
+/// [`setup`] from [`NetworkConfig`]).
 #[derive(Resource)]
 pub struct SourceRes(pub TileSource);
 
+/// Payloads drained from the source but not yet promoted — the per-frame
+/// promotion budget consumes from the front; the rest wait here.
 #[derive(Resource, Default)]
 pub struct PendingPayloads(pub VecDeque<TilePayload>);
 
+/// Absolute camera position at the last desired-set rebuild; the next
+/// rebuild triggers after [`StreamingConfig::update_distance`] of travel.
+/// Initialized far away so the first frame always rebuilds.
 #[derive(Resource)]
 pub struct LastDesiredPos(pub Vec3);
 
@@ -62,6 +84,7 @@ impl Default for CoverageDirty {
     }
 }
 
+/// World size (meters) of one tile at `zoom`: halves per level above base.
 pub fn zoom_size(world: &WorldConfig, zoom: u8) -> f64 {
     f64::from(world.tile_size) / f64::from(1u32 << (zoom - world.base_zoom))
 }
@@ -69,6 +92,11 @@ pub fn zoom_size(world: &WorldConfig, zoom: u8) -> f64 {
 // ---------------------------------------------------------------------------
 // startup
 
+/// Startup: validates the zoom range, builds the shared per-zoom meshes, and
+/// spawns the worker pool.
+///
+/// # Panics
+/// If the configured zoom range is outside `[MIN_ZOOM, MAX_ZOOM]` or inverted.
 pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, world: Res<WorldConfig>, net: Res<NetworkConfig>) {
     assert!(world.base_zoom >= MIN_ZOOM && world.max_zoom <= MAX_ZOOM && world.max_zoom >= world.base_zoom);
 
@@ -90,6 +118,12 @@ pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, world: Re
 // ---------------------------------------------------------------------------
 // per-frame systems (chained: reconcile → promote → update_desired → status)
 
+/// Evict resident tiles that are no longer needed: not desired AND
+/// (base-zoom stale | off-screen per last frame's [`ViewVisibility`] |
+/// beyond the horizon | covered by a resident parent / all four children).
+/// The covered-by rule protects against holes in the ground; its checks are
+/// gated on [`CoverageDirty`]. Eviction despawns the entity, drops the
+/// height grid, and lets the asset handles free the GPU resources.
 pub fn reconcile(
     mut commands: Commands,
     mut index: ResMut<TileIndex>,
@@ -158,6 +192,13 @@ fn covered(resident: &HashMap<TileKey, Entity>, world: &WorldConfig, key: TileKe
     false
 }
 
+/// Drain the source (one non-blocking sweep) and promote finished tiles:
+/// build the three images (albedo sRGB; heightmap/normals **linear** — an
+/// sRGB view would gamma-warp the Terrarium decode), one material, the
+/// height grid, and the tile entity with its custom culling AABB. Capped at
+/// [`StreamingConfig::max_promotions_per_frame`] per frame; the remainder
+/// waits in [`PendingPayloads`]. Failed drops wait for the next desired
+/// rebuild; cancelled-but-desired-again keys re-request immediately.
 #[allow(clippy::too_many_arguments)]
 pub fn promote(
     mut commands: Commands,
@@ -246,6 +287,10 @@ pub fn promote(
     }
 }
 
+/// Movement-gated desired-set rebuild: runs the pure LOD policy, cancels
+/// loading keys that fell out of the set (once, here — the set only changes
+/// in this system), and requests missing keys with their absolute provider
+/// coordinates resolved from the anchor.
 pub fn update_desired(
     mut index: ResMut<TileIndex>,
     mut last: ResMut<LastDesiredPos>,

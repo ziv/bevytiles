@@ -2,6 +2,10 @@
 //! in the vertex shader. One material asset per tile (Bevy batches by
 //! material); parameters are pushed from `RenderingConfig` by the plugin.
 
+// module-scoped: the ShaderType derive emits a phantom `check` fn that trips
+// dead_code on this bevy/encase version; everything here is public anyway
+#![allow(dead_code)]
+
 use crate::config::RenderingConfig;
 use bevy::pbr::{Material, MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
@@ -10,25 +14,42 @@ use bevy::render::render_resource::{
     AsBindGroup, RenderPipelineDescriptor, ShaderRef, ShaderType, SpecializedMeshPipelineError,
 };
 
+/// Asset path of the terrain WGSL (vertex displacement + lighting + fog).
+/// Ships in the crate's `assets/` directory; apps embedding bevytiles must
+/// make it reachable through their asset source.
 pub const TERRAIN_SHADER_PATH: &str = "shaders/terrain.wgsl";
 
 // allow: the ShaderType derive emits a hidden `check` fn whose spans land on
 // the fields, tripping dead_code warnings on this bevy/encase version
+/// The uniform block handed to `terrain.wgsl` — the GPU mirror of
+/// [`RenderingConfig`]. Field order must match the WGSL `TerrainParams`
+/// struct declaration exactly (encase lays it out in order).
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, ShaderType)]
 pub struct TerrainParams {
+    /// Fog color, linear RGBA.
     pub fog_color: Vec4,
+    /// Ambient light color, linear RGBA.
     pub ambient: Vec4,
+    /// Sun direction (normalized in the shader).
     pub sun_direction: Vec3,
+    /// Sun light intensity.
     pub sun_scale: f32,
+    /// Fog start distance (meters from the camera).
     pub fog_start: f32,
+    /// Fog end distance (meters from the camera).
     pub fog_end: f32,
+    /// Terrain relief exaggeration applied to the decoded heights.
     pub height_scale: f32,
+    /// Normal-map contrast multiplier.
     pub normals_scale: f32,
+    /// Vertical skirt drop (meters) applied to mesh-edge vertices.
     pub skirt_drop: f32,
 }
 
 impl TerrainParams {
+    /// Convert the user-facing config (sRGB [`Color`]s, plain fields) into
+    /// the linear-space uniform block.
     pub fn from_config(cfg: &RenderingConfig) -> Self {
         Self {
             fog_color: cfg.fog_color.to_linear().to_vec4(),
@@ -44,8 +65,12 @@ impl TerrainParams {
     }
 }
 
+/// One material per resident tile: the three tile textures plus the shared
+/// parameter block. Bevy uploads/binds these; dropping the handles (with the
+/// tile entity) frees the GPU resources.
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
 pub struct TerrainMaterial {
+    /// Satellite imagery (sRGB).
     #[texture(0)]
     #[sampler(1)]
     pub albedo: Handle<Image>,
@@ -58,6 +83,8 @@ pub struct TerrainMaterial {
     #[texture(4)]
     #[sampler(5)]
     pub normals: Handle<Image>,
+    /// Shader parameters; kept in sync with [`RenderingConfig`] by the
+    /// plugin's `sync_rendering` system.
     #[uniform(6)]
     pub params: TerrainParams,
 }

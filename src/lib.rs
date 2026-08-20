@@ -1,6 +1,13 @@
-//! bevytiles — geo-spatial terrain streaming for Bevy (a port of raytiles).
+//! # bevytiles
 //!
-//! Quick start:
+//! Geo-spatial terrain streaming for Bevy — a Rust port of the
+//! [raytiles](https://github.com/ziv/raytiles) engine. Streams satellite
+//! imagery, [Terrarium](https://registry.opendata.aws/terrain-tiles/)
+//! heightmaps, and normal maps around a moving camera and renders them as
+//! GPU-displaced terrain.
+//!
+//! ## Quick start
+//!
 //! ```no_run
 //! use bevy::prelude::*;
 //! use bevytiles::prelude::*;
@@ -15,6 +22,46 @@
 //!     })
 //!     .run();
 //! ```
+//!
+//! Configuration is four resources ([`WorldConfig`](config::WorldConfig),
+//! [`StreamingConfig`](config::StreamingConfig),
+//! [`RenderingConfig`](config::RenderingConfig),
+//! [`NetworkConfig`](config::NetworkConfig)), all defaulted — insert any of
+//! them before `run()` to override. Mark the streaming camera with
+//! [`TerrainCamera`](config::TerrainCamera).
+//!
+//! ## Architecture
+//!
+//! One [`Entity`] per resident tile; Bevy's visibility system culls them via
+//! per-tile AABBs; the [`material::TerrainMaterial`] displaces flat shared
+//! grid meshes in the vertex shader. Around that, four components mirror the
+//! raytiles design:
+//!
+//! | module | role |
+//! |---|---|
+//! | [`lod`] | pure desired-set policy (which tiles *should* exist for a camera position) |
+//! | [`source`] | worker threads: HTTP + disk cache + PNG/JPEG decode + terrain synthesis, delivering whole-tile payloads through channels |
+//! | [`store`] | ECS systems tying it together: eviction, budgeted promotion, desired-set upkeep, status |
+//! | [`height`] | CPU-side height grids answering [`ground_height`](height::ground_height) queries |
+//!
+//! ## Coordinate spaces
+//!
+//! Two frames, one convention: **`absolute = user − world_offset`**.
+//! Tile math lives in absolute space (fixed origin at the anchor tile);
+//! entity transforms live in user space (small floats near the camera).
+//! For worlds larger than a few kilometers the app must *rebase*: shift the
+//! camera, every user-space entity, and
+//! [`TerrainAnchor::world_offset`](config::TerrainAnchor) by the same amount
+//! — the plugin rebakes tile transforms whenever the offset changes. See
+//! `examples/demo.rs` for the pattern.
+//!
+//! ## Frame loop
+//!
+//! Systems run in [`Update`], ordered by [`TerrainSet`]:
+//! reconcile → promote → update-desired → status. The order is load-bearing;
+//! see each variant's documentation.
+
+#![warn(missing_docs)]
 
 pub mod config;
 pub mod height;
@@ -24,6 +71,7 @@ pub mod source;
 pub mod store;
 pub mod synth;
 
+/// The commonly needed surface: plugin, configs, markers, and queries.
 pub mod prelude {
     pub use crate::config::{
         NetworkConfig, RenderingConfig, StreamingConfig, TerrainAnchor, TerrainCamera,
@@ -37,18 +85,36 @@ pub mod prelude {
 use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 
+/// Ordering of the terrain systems within [`Update`]. Chained in declaration
+/// order; the sequence mirrors raytiles' frame loop and is load-bearing —
+/// in particular, [`Status`](TerrainSet::Status) must observe the desired set
+/// *after* [`UpdateDesired`](TerrainSet::UpdateDesired) rebuilt it, or the
+/// initial-loading flag flips before anything was ever requested.
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainSet {
-    /// Evict residents that are no longer needed.
+    /// Evict resident tiles that are no longer needed (not desired and
+    /// off-screen / beyond the horizon / covered by other zoom levels).
     Reconcile,
-    /// Drain the source and spawn newly finished tiles (budgeted).
+    /// Drain the [`source`](crate::source::TileSource) and spawn newly
+    /// finished tiles, capped per frame
+    /// ([`StreamingConfig::max_promotions_per_frame`](config::StreamingConfig)).
     Promote,
-    /// Rebuild the desired set / cancel / request (movement-gated).
+    /// Rebuild the desired tile set when the camera moved far enough; cancel
+    /// stale downloads and request missing tiles.
     UpdateDesired,
-    /// Loading progress bookkeeping (must run after UpdateDesired).
+    /// Update [`TerrainStatus`](config::TerrainStatus), rebake transforms
+    /// after a rebase, and push [`RenderingConfig`](config::RenderingConfig)
+    /// changes to live materials.
     Status,
 }
 
+/// The terrain engine. Add after `DefaultPlugins`; insert any of the config
+/// resources first to override the defaults (they are also insertable
+/// afterwards — everything is read at `Startup` or later).
+///
+/// Requires exactly one camera marked with
+/// [`TerrainCamera`](config::TerrainCamera) to drive streaming; with none
+/// present the terrain systems idle.
 pub struct TerrainPlugin;
 
 impl Plugin for TerrainPlugin {

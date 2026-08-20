@@ -1,15 +1,22 @@
-//! The raytiles demo, on Bevy: fly over the Negev with a loading screen,
-//! large-world rebasing, ground-collision crash detection, and sky-matched
-//! fog. Controls: W/S pitch, A/D yaw, Up/Down throttle, R reset after crash.
+//! The raytiles demo, on Bevy: fly over real-world terrain with a loading
+//! screen, large-world rebasing, ground-collision crash detection, and
+//! sky-matched fog.
+//!
+//! Controls: **W/S** pitch, **A/D** yaw, **Up/Down** throttle, **R** reset
+//! after a crash. Change [`LAT`]/[`LON`] to fly anywhere.
 
 use bevy::prelude::*;
 use bevytiles::prelude::*;
 
-// the Negev (same anchor as the raytiles demo)
+/// World anchor: the Grand Canyon. (The raytiles demo also ships anchors for
+/// the Negev, the Dolomites, and London — any lat/lon works.)
 const LAT: f64 = 35.97391;
+/// See [`LAT`].
 const LON: f64 = -113.76892;
 
-const SKY: Color = Color::srgb_u8(102, 191, 255); // raylib SKYBLUE
+/// Sky/fog color (raylib's SKYBLUE, for parity with the C++ demo).
+const SKY: Color = Color::srgb_u8(102, 191, 255);
+/// User-space drift (meters) that triggers a large-world rebase.
 const REBASE_THRESHOLD: f32 = 4096.0;
 
 fn main() {
@@ -39,6 +46,7 @@ fn main() {
         .run();
 }
 
+/// Demo flight state: forward speed and whether we hit the ground.
 #[derive(Resource)]
 struct Flight {
     speed: f32,
@@ -60,6 +68,7 @@ struct HudText;
 #[derive(Component)]
 struct CrashText;
 
+/// Spawn the streaming camera (marked [`TerrainCamera`]) and the UI texts.
 fn setup(mut commands: Commands, world: Res<WorldConfig>) {
     commands.spawn((
         Camera3d::default(),
@@ -150,6 +159,8 @@ fn rebase_large_world(mut anchor: ResMut<TerrainAnchor>, mut cams: Query<&mut Tr
     }
 }
 
+/// Compare the camera altitude against [`ground_height`]; below ground =
+/// crash. `R` respawns at the initial position (offset-corrected).
 fn crash_check(
     mut commands: Commands,
     mut flight: ResMut<Flight>,
@@ -186,6 +197,7 @@ fn crash_check(
     }
 }
 
+/// Splash text while [`TerrainStatus::loading`]; despawns itself after.
 fn loading_ui(
     mut commands: Commands,
     status: Res<TerrainStatus>,
@@ -200,6 +212,7 @@ fn loading_ui(
     }
 }
 
+/// Corner HUD: controls, speed, positions, resident-tile count.
 fn hud(
     status: Res<TerrainStatus>,
     flight: Res<Flight>,

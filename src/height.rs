@@ -12,12 +12,17 @@ use std::collections::HashMap;
 /// Terrarium source is only meter-accurate; bilinear sampling smooths it).
 #[derive(Clone)]
 pub struct HeightGrid {
+    /// Grid width in texels (matches the source heightmap).
     pub w: u32,
+    /// Grid height in texels.
     pub h: u32,
+    /// Row-major samples, encoded `round(height_m) + 32768`.
     pub samples: Vec<u16>,
 }
 
 impl HeightGrid {
+    /// Decode a Terrarium heightmap into a grid (quantized to whole meters —
+    /// the source data is only meter-accurate; [`Self::sample`] interpolates).
     pub fn from_terrarium(img: &RgbImage) -> Self {
         let samples = img
             .pixels()
@@ -47,6 +52,9 @@ impl HeightGrid {
     }
 }
 
+/// All resident tiles' height grids, keyed like the tile entities. Kept in
+/// lockstep with residency by the [`store`](crate::store) systems; read it
+/// via [`ground_height`].
 #[derive(Resource, Default)]
 pub struct HeightGrids(pub HashMap<TileKey, HeightGrid>);
 
