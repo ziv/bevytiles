@@ -52,9 +52,13 @@ normals. Large worlds use the raytiles rebase convention via the `TerrainAnchor`
 | `synth` | Terrarium float decode / quadrant upsample / carry-safe encode |
 | `height` | uint16 height grids + bilinear `ground_height` |
 
-## Notes
+## Bevy compatibility
 
-- Pinned to **Bevy 0.16**; upgrading is a migration-guide pass.
+| bevytiles | bevy |
+|---|---|
+| 0.1 | 0.19 |
+
+## Notes
 - Data: imagery © Esri; elevation/normals from the Mapzen/AWS terrain tiles. Mind their terms.
 - `cargo test` runs the full suite (lod snapshots, synthesis math, source integration against
   seeded caches — all offline).

@@ -108,7 +108,7 @@ fn setup(mut commands: Commands, world: Res<WorldConfig>) {
         LoadingText,
         Text::new("Loading... 0%"),
         TextFont {
-            font_size: 42.0,
+            font_size: FontSize::Px(42.0),
             ..Default::default()
         },
         TextColor(Color::WHITE),
@@ -123,7 +123,7 @@ fn setup(mut commands: Commands, world: Res<WorldConfig>) {
         HudText,
         Text::new(""),
         TextFont {
-            font_size: 16.0,
+            font_size: FontSize::Px(16.0),
             ..Default::default()
         },
         TextColor(Color::WHITE),
@@ -263,7 +263,7 @@ fn crash_check(
             CrashText,
             Text::new("You crashed! Press R to reset."),
             TextFont {
-                font_size: 36.0,
+                font_size: FontSize::Px(36.0),
                 ..Default::default()
             },
             TextColor(Color::WHITE),

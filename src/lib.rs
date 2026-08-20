@@ -85,7 +85,7 @@ pub mod prelude {
 use bevy::asset::load_internal_asset;
 use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
-use bevy::render::render_resource::Shader;
+use bevy::shader::Shader;
 
 /// Ordering of the terrain systems within [`Update`]. Chained in declaration
 /// order; the sequence mirrors raytiles' frame loop and is load-bearing —

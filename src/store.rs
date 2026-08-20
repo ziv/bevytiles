@@ -8,11 +8,11 @@ use crate::height::HeightGrids;
 use crate::lod::{self, LodOptions, TileKey};
 use crate::material::{TerrainMaterial, TerrainParams};
 use crate::source::{TileDrop, TilePayload, TileRequest, TileSource};
+use bevy::asset::RenderAssetUsages;
+use bevy::camera::primitives::Aabb;
 use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
 use bevy::render::mesh::PlaneMeshBuilder;
-use bevy::render::primitives::Aabb;
-use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -438,7 +438,7 @@ pub fn sync_rendering(
     let params = TerrainParams::from_config(&rendering);
     let handles: Vec<_> = materials.iter().map(|(id, _)| id).collect();
     for id in handles {
-        if let Some(mat) = materials.get_mut(id) {
+        if let Some(mut mat) = materials.get_mut(id) {
             mat.params = params;
         }
     }
