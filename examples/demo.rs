@@ -2,8 +2,8 @@
 //! screen, large-world rebasing, ground-collision crash detection, and
 //! sky-matched fog.
 //!
-//! Controls: **W/S** pitch, **A/D** yaw, **Up/Down** throttle, **R** reset
-//! after a crash. Change [`LAT`]/[`LON`] to fly anywhere.
+//! Controls: **A/D** roll, **Q/E** yaw, **W/S** pitch, **+/-** throttle,
+//! **R** reset after a crash. Change [`LAT`]/[`LON`] to fly anywhere.
 
 use bevy::prelude::*;
 use bevytiles::prelude::*;
@@ -16,6 +16,9 @@ const LON: f64 = -113.76892;
 
 /// Sky/fog color (raylib's SKYBLUE, for parity with the C++ demo).
 const SKY: Color = Color::srgb_u8(102, 191, 255);
+/// How quickly the controls ease toward their target rate (1/s): higher is
+/// snappier, lower is floatier.
+const CONTROL_RESPONSE: f32 = 5.0;
 /// User-space drift (meters) that triggers a large-world rebase.
 const REBASE_THRESHOLD: f32 = 4096.0;
 
@@ -54,10 +57,14 @@ fn main() {
         .run();
 }
 
-/// Demo flight state: forward speed and whether we hit the ground.
+/// Demo flight state: forward speed, smoothed angular velocity, and whether
+/// we hit the ground.
 #[derive(Resource)]
 struct Flight {
     speed: f32,
+    /// Current angular velocity (rad/s): x = pitch, y = yaw, z = roll.
+    /// Eased toward the key-derived target each frame for smooth control.
+    ang_vel: Vec3,
     crashed: bool,
 }
 
@@ -65,6 +72,7 @@ impl Default for Flight {
     fn default() -> Self {
         Self {
             speed: 120.0,
+            ang_vel: Vec3::ZERO,
             crashed: false,
         }
     }
@@ -128,7 +136,13 @@ fn setup(mut commands: Commands, world: Res<WorldConfig>) {
     ));
 }
 
-/// Simple airplane-style fly camera: always moving forward.
+/// Airplane-style fly camera, always moving forward. All rotations are
+/// around the camera's LOCAL axes, so yawing while banked turns like an
+/// aircraft: A/D roll, Q/E yaw, W/S pitch, +/- throttle.
+///
+/// Smoothing: keys set a TARGET angular velocity; the actual velocity eases
+/// toward it exponentially ([`CONTROL_RESPONSE`], frame-rate independent),
+/// so inputs ramp in and glide out instead of snapping.
 fn fly(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
@@ -143,30 +157,40 @@ fn fly(
     };
     let dt = time.delta_secs();
 
-    let mut yaw = 0.0f32;
-    let mut pitch = 0.0f32;
+    // target angular velocity from the keys (rad/s)
+    let mut target = Vec3::ZERO;
     if keys.pressed(KeyCode::KeyA) {
-        yaw += 0.8 * dt;
+        target.z += 1.2; // bank left
     }
     if keys.pressed(KeyCode::KeyD) {
-        yaw -= 0.8 * dt;
+        target.z -= 1.2; // bank right
+    }
+    if keys.pressed(KeyCode::KeyQ) {
+        target.y += 0.8; // nose left
+    }
+    if keys.pressed(KeyCode::KeyE) {
+        target.y -= 0.8; // nose right
     }
     if keys.pressed(KeyCode::KeyW) {
-        pitch -= 0.6 * dt;
+        target.x -= 0.6; // nose down
     }
     if keys.pressed(KeyCode::KeyS) {
-        pitch += 0.6 * dt;
+        target.x += 0.6; // nose up
     }
-    if keys.pressed(KeyCode::ArrowUp) {
+    if keys.pressed(KeyCode::Equal) || keys.pressed(KeyCode::NumpadAdd) {
         flight.speed = (flight.speed * (1.0 + dt)).min(3_000.0);
     }
-    if keys.pressed(KeyCode::ArrowDown) {
+    if keys.pressed(KeyCode::Minus) || keys.pressed(KeyCode::NumpadSubtract) {
         flight.speed = (flight.speed * (1.0 - dt)).max(20.0);
     }
 
-    tf.rotate_y(yaw);
-    let right = tf.right();
-    tf.rotate_axis(right, pitch);
+    // ease the actual rate toward the target (exponential, dt-independent)
+    let blend = 1.0 - (-CONTROL_RESPONSE * dt).exp();
+    flight.ang_vel = flight.ang_vel.lerp(target, blend);
+
+    tf.rotate_local_z(flight.ang_vel.z * dt);
+    tf.rotate_local_y(flight.ang_vel.y * dt);
+    tf.rotate_local_x(flight.ang_vel.x * dt);
     let forward = tf.forward();
     tf.translation += forward * flight.speed * dt;
 }
@@ -215,7 +239,16 @@ fn crash_check(
     if flight.crashed {
         if keys.just_pressed(KeyCode::KeyR) {
             flight.crashed = false;
-            tf.translation = world.initial_position(5_000.0) + anchor.world_offset;
+            flight.ang_vel = Vec3::ZERO;
+            // reset orientation too — with roll you can crash inverted
+            *tf =
+                Transform::from_translation(world.initial_position(5_000.0) + anchor.world_offset)
+                    .looking_at(
+                        world.initial_position(5_000.0)
+                            + anchor.world_offset
+                            + Vec3::new(-1000.0, -300.0, -1000.0),
+                        Vec3::Y,
+                    );
             for e in &crash_text {
                 commands.entity(e).despawn();
             }
@@ -270,7 +303,7 @@ fn hud(
     let Ok(cam) = cams.single() else { return };
     for mut text in &mut texts {
         text.0 = format!(
-            "W/S pitch  A/D yaw  Up/Down throttle ({:.0} m/s)\nuser P {:.0} {:.0} {:.0}   offset {:.0} {:.0}\ntiles resident: {}",
+            "A/D roll  Q/E yaw  W/S pitch  +/- throttle ({:.0} m/s)\nuser P {:.0} {:.0} {:.0}   offset {:.0} {:.0}\ntiles resident: {}",
             flight.speed,
             cam.translation.x,
             cam.translation.y,

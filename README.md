@@ -14,7 +14,7 @@ visibility system, and materials) lives in `raytiles/docs/bevy.md`.
 cargo run --example demo
 ```
 
-Flies over the Negev. **W/S** pitch, **A/D** yaw, **Up/Down** throttle, **R** reset after crashing
+Flies over the Grand Canyon. **A/D** roll, **Q/E** yaw, **W/S** pitch, **+/-** throttle, **R** reset after crashing
 into the terrain. Tiles cache under `.cache/`; the first run downloads them (Esri imagery serves
 JPEG despite the endpoint name — decoding handles both).
 
