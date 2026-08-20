@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevytiles::prelude::*;
 
 // the Negev (same anchor as the raytiles demo)
-const LAT: f64 = 30.826_919_691_721_23;
-const LON: f64 = 34.913_862_356_224_26;
+const LAT: f64 = 35.97391;
+const LON: f64 = -113.76892;
 
 const SKY: Color = Color::srgb_u8(102, 191, 255); // raylib SKYBLUE
 const REBASE_THRESHOLD: f32 = 4096.0;
