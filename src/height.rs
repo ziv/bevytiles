@@ -27,11 +27,16 @@ impl HeightGrid {
         let samples = img
             .pixels()
             .map(|p| {
-                let h = f64::from(p[0]) * 256.0 + f64::from(p[1]) + f64::from(p[2]) / 256.0 - 32768.0;
+                let h =
+                    f64::from(p[0]) * 256.0 + f64::from(p[1]) + f64::from(p[2]) / 256.0 - 32768.0;
                 (h.round() + 32768.0).clamp(0.0, 65535.0) as u16
             })
             .collect();
-        Self { w: img.width(), h: img.height(), samples }
+        Self {
+            w: img.width(),
+            h: img.height(),
+            samples,
+        }
     }
 
     /// Bilinear sample at normalized (u, v) ∈ [0, 1]; texel centers at
@@ -87,7 +92,11 @@ mod tests {
     #[test]
     fn sample_centers_midpoints_and_edges() {
         // 2x1 grid: 100 m and 300 m
-        let grid = HeightGrid { w: 2, h: 1, samples: vec![32768 + 100, 32768 + 300] };
+        let grid = HeightGrid {
+            w: 2,
+            h: 1,
+            samples: vec![32768 + 100, 32768 + 300],
+        };
         assert!((grid.sample(0.25, 0.5) - 100.0).abs() < 1e-3);
         assert!((grid.sample(0.75, 0.5) - 300.0).abs() < 1e-3);
         assert!((grid.sample(0.5, 0.5) - 200.0).abs() < 1e-3);

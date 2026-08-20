@@ -49,7 +49,9 @@ pub fn upsample_quadrant(src: &[f32], w: usize, h: usize, qx: usize, qz: usize) 
 pub fn encode_terrarium(heights: &[f32], w: u32, h: u32) -> RgbImage {
     let mut img = RgbImage::new(w, h);
     for (i, px) in img.pixels_mut().enumerate() {
-        let fixed = ((f64::from(heights[i]) + 32768.0) * 256.0).round().clamp(0.0, 0xFF_FFFF as f64) as u32;
+        let fixed = ((f64::from(heights[i]) + 32768.0) * 256.0)
+            .round()
+            .clamp(0.0, 0xFF_FFFF as f64) as u32;
         px[0] = (fixed >> 16) as u8;
         px[1] = ((fixed >> 8) & 0xFF) as u8;
         px[2] = (fixed & 0xFF) as u8;
@@ -70,7 +72,16 @@ mod tests {
 
     #[test]
     fn round_trip_quarter_meter() {
-        let heights = [0.0f32, 8848.0, -415.0, 100.5, 1234.25, 255.996_09, 256.0, -0.003_906_25];
+        let heights = [
+            0.0f32,
+            8848.0,
+            -415.0,
+            100.5,
+            1234.25,
+            255.996_1,
+            256.0,
+            -0.003_906_25,
+        ];
         let img = encode_terrarium(&heights, heights.len() as u32, 1);
         let decoded = decode_terrarium_floats(&img);
         for (a, b) in heights.iter().zip(&decoded) {
@@ -114,7 +125,9 @@ mod tests {
         // z15 → z22 chain on a gradient; compare against a second, straight-
         // forward computation of the same chain (guards refactors of the loop)
         let (w, h) = (16usize, 16usize);
-        let src: Vec<f32> = (0..w * h).map(|i| (i % w) as f32 * 16.0 + (i / w) as f32).collect();
+        let src: Vec<f32> = (0..w * h)
+            .map(|i| (i % w) as f32 * 16.0 + (i / w) as f32)
+            .collect();
         let quads = [(0, 0), (0, 0), (0, 0), (1, 1), (0, 1), (0, 0), (1, 1)];
         let mut a = src.clone();
         for &(qx, qz) in &quads {

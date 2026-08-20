@@ -24,7 +24,10 @@ fn dead_host_config(dir: &Path) -> NetworkConfig {
 }
 
 fn cache_path(dir: &Path, kind: &str, zoom: u8, x: i32, z: i32) -> std::path::PathBuf {
-    dir.join(kind).join(zoom.to_string()).join(x.to_string()).join(format!("{z}.png"))
+    dir.join(kind)
+        .join(zoom.to_string())
+        .join(x.to_string())
+        .join(format!("{z}.png"))
 }
 
 fn write_png(path: &Path, img: &image::DynamicImage) {
@@ -33,17 +36,25 @@ fn write_png(path: &Path, img: &image::DynamicImage) {
 }
 
 fn gradient_heights(size: usize) -> Vec<f32> {
-    (0..size * size).map(|i| (i % size) as f32 * 16.0 + (i / size) as f32).collect()
+    (0..size * size)
+        .map(|i| (i % size) as f32 * 16.0 + (i / size) as f32)
+        .collect()
 }
 
 fn seed_terrarium(dir: &Path, zoom: u8, x: i32, z: i32, size: usize) {
     let img = synth::encode_terrarium(&gradient_heights(size), size as u32, size as u32);
-    write_png(&cache_path(dir, "heightmap", zoom, x, z), &image::DynamicImage::ImageRgb8(img));
+    write_png(
+        &cache_path(dir, "heightmap", zoom, x, z),
+        &image::DynamicImage::ImageRgb8(img),
+    );
 }
 
 fn seed_texture(dir: &Path, zoom: u8, x: i32, z: i32) {
     let img = RgbaImage::from_pixel(2, 2, image::Rgba([200, 60, 30, 255]));
-    write_png(&cache_path(dir, "texture", zoom, x, z), &image::DynamicImage::ImageRgba8(img));
+    write_png(
+        &cache_path(dir, "texture", zoom, x, z),
+        &image::DynamicImage::ImageRgba8(img),
+    );
 }
 
 struct Harness {
@@ -54,7 +65,11 @@ struct Harness {
 
 impl Harness {
     fn new(cfg: NetworkConfig) -> Self {
-        Self { src: TileSource::new(&cfg), payloads: Vec::new(), drops: Vec::new() }
+        Self {
+            src: TileSource::new(&cfg),
+            payloads: Vec::new(),
+            drops: Vec::new(),
+        }
     }
     fn pump_until(&mut self, mut pred: impl FnMut(&Self) -> bool) -> bool {
         let deadline = Instant::now() + Duration::from_secs(10);
@@ -84,7 +99,11 @@ fn cache_hit_delivers_whole_payload_without_network() {
     // normals unseeded: dead host → flat default, tile still arrives
 
     let mut h = Harness::new(cfg);
-    let key = TileKey { zoom: 9, x: 5, z: 7 };
+    let key = TileKey {
+        zoom: 9,
+        x: 5,
+        z: 7,
+    };
     h.src.request(TileRequest { key, x: 5, z: 7 });
 
     assert!(h.pump_until(|h| !h.payloads.is_empty()));
@@ -103,7 +122,15 @@ fn missing_heightmap_drops_with_reason() {
     seed_texture(dir.path(), 9, 1, 1);
 
     let mut h = Harness::new(cfg);
-    h.src.request(TileRequest { key: TileKey { zoom: 9, x: 1, z: 1 }, x: 1, z: 1 });
+    h.src.request(TileRequest {
+        key: TileKey {
+            zoom: 9,
+            x: 1,
+            z: 1,
+        },
+        x: 1,
+        z: 1,
+    });
     assert!(h.pump_until(|h| !h.drops.is_empty()));
     assert!(h.payloads.is_empty());
     assert!(matches!(h.drops[0], TileDrop::Failed(_, _)));
@@ -119,7 +146,11 @@ fn z16_heightmap_derives_from_seeded_z15_ancestor() {
     seed_texture(dir.path(), 16, 21, 40);
 
     let mut h = Harness::new(cfg);
-    let key = TileKey { zoom: 16, x: 21, z: 40 };
+    let key = TileKey {
+        zoom: 16,
+        x: 21,
+        z: 40,
+    };
     h.src.request(TileRequest { key, x: 21, z: 40 });
 
     assert!(h.pump_until(|h| !h.payloads.is_empty()));
@@ -149,7 +180,15 @@ fn z17_derives_through_the_chain_and_backfills_lineage_only() {
     seed_texture(dir.path(), 17, 14, 21);
 
     let mut h = Harness::new(cfg);
-    h.src.request(TileRequest { key: TileKey { zoom: 17, x: 14, z: 21 }, x: 14, z: 21 });
+    h.src.request(TileRequest {
+        key: TileKey {
+            zoom: 17,
+            x: 14,
+            z: 21,
+        },
+        x: 14,
+        z: 21,
+    });
     assert!(h.pump_until(|h| !h.payloads.is_empty()));
 
     let mut floats = gradient_heights(size);
@@ -185,7 +224,15 @@ fn corrupt_ancestor_drops_the_derived_tile() {
     seed_texture(dir.path(), 16, 14, 14);
 
     let mut h = Harness::new(cfg);
-    h.src.request(TileRequest { key: TileKey { zoom: 16, x: 14, z: 14 }, x: 14, z: 14 });
+    h.src.request(TileRequest {
+        key: TileKey {
+            zoom: 16,
+            x: 14,
+            z: 14,
+        },
+        x: 14,
+        z: 14,
+    });
     assert!(h.pump_until(|h| !h.drops.is_empty()));
     assert!(matches!(h.drops[0], TileDrop::Failed(_, _)));
 }
@@ -198,7 +245,11 @@ fn requests_dedup_by_key_while_in_flight() {
     seed_terrarium(dir.path(), 9, 6, 6, 16);
 
     let mut h = Harness::new(cfg);
-    let key = TileKey { zoom: 9, x: 6, z: 6 };
+    let key = TileKey {
+        zoom: 9,
+        x: 6,
+        z: 6,
+    };
     h.src.request(TileRequest { key, x: 6, z: 6 });
     h.src.request(TileRequest { key, x: 6, z: 6 }); // racy dedup: at most one answer per in-flight window
     assert!(h.pump_until(|h| !h.payloads.is_empty()));

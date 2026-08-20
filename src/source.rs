@@ -130,7 +130,15 @@ impl TileSource {
                 std::thread::spawn(move || w.run())
             })
             .collect();
-        Self { cfg, shared, jobs_tx, derive_tx, payload_rx, drop_rx, workers }
+        Self {
+            cfg,
+            shared,
+            jobs_tx,
+            derive_tx,
+            payload_rx,
+            drop_rx,
+            workers,
+        }
     }
 
     /// Queue one tile fetch. Dedup by key: a no-op while the key is in flight
@@ -143,7 +151,10 @@ impl TileSource {
         }
         let flag = Arc::new(AtomicBool::new(false));
         in_flight.insert(req.key, flag.clone());
-        let _ = self.jobs_tx.send(Job { req, cancelled: flag });
+        let _ = self.jobs_tx.send(Job {
+            req,
+            cancelled: flag,
+        });
     }
 
     /// Flag a job for cancellation (checked at pickup and between assets).
@@ -164,8 +175,14 @@ impl Drop for TileSource {
     fn drop(&mut self) {
         // disconnect the queues; workers exit when both are empty+disconnected.
         // an in-flight HTTP read may delay this by its timeout.
-        drop(std::mem::replace(&mut self.jobs_tx, crossbeam_channel::bounded(0).0));
-        drop(std::mem::replace(&mut self.derive_tx, crossbeam_channel::bounded(0).0));
+        drop(std::mem::replace(
+            &mut self.jobs_tx,
+            crossbeam_channel::bounded(0).0,
+        ));
+        drop(std::mem::replace(
+            &mut self.derive_tx,
+            crossbeam_channel::bounded(0).0,
+        ));
         for w in self.workers.drain(..) {
             let _ = w.join();
         }
@@ -207,12 +224,9 @@ impl Worker {
                 Err(TryRecvError::Disconnected) if self.jobs.is_empty() => return,
                 Err(_) => {}
             }
-            match self.derives.try_recv() {
-                Ok(task) => {
-                    self.run_derive(task);
-                    continue;
-                }
-                Err(_) => {}
+            if let Ok(task) = self.derives.try_recv() {
+                self.run_derive(task);
+                continue;
             }
             // nothing ready: block on either queue
             crossbeam_channel::select! {
@@ -238,7 +252,8 @@ impl Worker {
         }
 
         let result: Result<TilePayload, String> = (|| {
-            let albedo_bytes = self.fetch_bytes(agent, Kind::Texture, key.zoom, job.req.x, job.req.z)?;
+            let albedo_bytes =
+                self.fetch_bytes(agent, Kind::Texture, key.zoom, job.req.x, job.req.z)?;
             let albedo = decode_png(&albedo_bytes)?.into_rgba8();
             if cancelled() {
                 return Err(CANCELLED.into());
@@ -249,7 +264,13 @@ impl Worker {
             }
             let normals = self.fetch_normals(agent, &job.req);
             let grid = HeightGrid::from_terrarium(&height);
-            Ok(TilePayload { key, albedo, height, normals, grid })
+            Ok(TilePayload {
+                key,
+                albedo,
+                height,
+                normals,
+                grid,
+            })
         })();
 
         finish_in_flight();
@@ -272,13 +293,23 @@ impl Worker {
     // -- assets -------------------------------------------------------------
 
     /// cache-or-HTTP raw bytes (fetched bytes are written through to cache)
-    fn fetch_bytes(&self, agent: &ureq::Agent, kind: Kind, zoom: u8, x: i32, z: i32) -> Result<Vec<u8>, String> {
+    fn fetch_bytes(
+        &self,
+        agent: &ureq::Agent,
+        kind: Kind,
+        zoom: u8,
+        x: i32,
+        z: i32,
+    ) -> Result<Vec<u8>, String> {
         let path = self.cache_path(&kind, zoom, x, z);
         if path.exists() {
             return std::fs::read(&path).map_err(|e| format!("cache read {path:?}: {e}"));
         }
         let url = expand_url(self.url_template(&kind), zoom, x, z);
-        let resp = agent.get(&url).call().map_err(|e| format!("GET {url}: {e}"))?;
+        let resp = agent
+            .get(&url)
+            .call()
+            .map_err(|e| format!("GET {url}: {e}"))?;
         let mut bytes = Vec::new();
         use std::io::Read;
         resp.into_reader()
@@ -350,7 +381,11 @@ impl Worker {
         if !done.insert(req.key) {
             return;
         }
-        let _ = self.derive_tx.send(DeriveTask { zoom: req.key.zoom, x: req.x, z: req.z });
+        let _ = self.derive_tx.send(DeriveTask {
+            zoom: req.key.zoom,
+            x: req.x,
+            z: req.z,
+        });
     }
 
     fn run_derive(&self, task: DeriveTask) {
@@ -360,8 +395,12 @@ impl Worker {
         }
         let dz = task.zoom - native;
         let parent_path = self.cache_path(&Kind::Heightmap, native, task.x >> dz, task.z >> dz);
-        let Ok(bytes) = std::fs::read(&parent_path) else { return };
-        let Ok(parent) = decode_png(&bytes) else { return };
+        let Ok(bytes) = std::fs::read(&parent_path) else {
+            return;
+        };
+        let Ok(parent) = decode_png(&bytes) else {
+            return;
+        };
         let parent = parent.into_rgb8();
         let (w, h) = (parent.width() as usize, parent.height() as usize);
         let mut floats = synth::decode_terrarium_floats(&parent);
@@ -402,7 +441,12 @@ impl Worker {
             Kind::Heightmap => "heightmap",
             Kind::Normals => "normals",
         };
-        self.cfg.cache_dir.join(dir).join(zoom.to_string()).join(x.to_string()).join(format!("{z}.png"))
+        self.cfg
+            .cache_dir
+            .join(dir)
+            .join(zoom.to_string())
+            .join(x.to_string())
+            .join(format!("{z}.png"))
     }
 
     fn url_template(&self, kind: &Kind) -> &str {

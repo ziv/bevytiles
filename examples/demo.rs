@@ -20,12 +20,17 @@ const SKY: Color = Color::srgb_u8(102, 191, 255);
 const REBASE_THRESHOLD: f32 = 4096.0;
 
 fn main() {
-    let mut rendering = RenderingConfig::default();
-    rendering.fog_color = SKY;
-    rendering.ambient = Color::srgb_u8(200, 200, 200);
+    let rendering = RenderingConfig {
+        fog_color: SKY,
+        skirt_drop: 1000.0,
+        ambient: Color::srgb_u8(200, 200, 200),
+        ..Default::default()
+    };
 
-    let mut network = NetworkConfig::default();
-    network.threads = 8;
+    let network = NetworkConfig {
+        threads: 8,
+        ..Default::default()
+    };
 
     let mut world = WorldConfig::from_lat_lon(LAT, LON);
     world.skirt_overlap = [1.01; ZOOM_LEVELS];
@@ -42,7 +47,10 @@ fn main() {
         .add_plugins(TerrainPlugin)
         .init_resource::<Flight>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (fly, rebase_large_world, crash_check, loading_ui, hud).chain())
+        .add_systems(
+            Update,
+            (fly, rebase_large_world, crash_check, loading_ui, hud).chain(),
+        )
         .run();
 }
 
@@ -55,7 +63,10 @@ struct Flight {
 
 impl Default for Flight {
     fn default() -> Self {
-        Self { speed: 120.0, crashed: false }
+        Self {
+            speed: 120.0,
+            crashed: false,
+        }
     }
 }
 
@@ -79,23 +90,41 @@ fn setup(mut commands: Commands, world: Res<WorldConfig>) {
             far: 400_000.0,
             ..Default::default()
         }),
-        Transform::from_translation(world.initial_position(5_000.0))
-            .looking_at(world.initial_position(5_000.0) + Vec3::new(-1000.0, -300.0, -1000.0), Vec3::Y),
+        Transform::from_translation(world.initial_position(5_000.0)).looking_at(
+            world.initial_position(5_000.0) + Vec3::new(-1000.0, -300.0, -1000.0),
+            Vec3::Y,
+        ),
     ));
 
     commands.spawn((
         LoadingText,
         Text::new("Loading... 0%"),
-        TextFont { font_size: 42.0, ..Default::default() },
+        TextFont {
+            font_size: 42.0,
+            ..Default::default()
+        },
         TextColor(Color::WHITE),
-        Node { position_type: PositionType::Absolute, left: Val::Percent(38.0), top: Val::Percent(45.0), ..Default::default() },
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Percent(38.0),
+            top: Val::Percent(45.0),
+            ..Default::default()
+        },
     ));
     commands.spawn((
         HudText,
         Text::new(""),
-        TextFont { font_size: 16.0, ..Default::default() },
+        TextFont {
+            font_size: 16.0,
+            ..Default::default()
+        },
         TextColor(Color::WHITE),
-        Node { position_type: PositionType::Absolute, left: Val::Px(10.0), top: Val::Px(10.0), ..Default::default() },
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(10.0),
+            top: Val::Px(10.0),
+            ..Default::default()
+        },
     ));
 }
 
@@ -109,7 +138,9 @@ fn fly(
     if flight.crashed {
         return;
     }
-    let Ok(mut tf) = cams.single_mut() else { return };
+    let Ok(mut tf) = cams.single_mut() else {
+        return;
+    };
     let dt = time.delta_secs();
 
     let mut yaw = 0.0f32;
@@ -144,8 +175,13 @@ fn fly(
 /// threshold, shift the camera AND the world offset by the same amount —
 /// preserving `absolute = user − offset`. The plugin rebakes tile transforms
 /// when TerrainAnchor changes.
-fn rebase_large_world(mut anchor: ResMut<TerrainAnchor>, mut cams: Query<&mut Transform, With<TerrainCamera>>) {
-    let Ok(mut tf) = cams.single_mut() else { return };
+fn rebase_large_world(
+    mut anchor: ResMut<TerrainAnchor>,
+    mut cams: Query<&mut Transform, With<TerrainCamera>>,
+) {
+    let Ok(mut tf) = cams.single_mut() else {
+        return;
+    };
     let mut shift = Vec3::ZERO;
     if tf.translation.x.abs() > REBASE_THRESHOLD {
         shift.x = -REBASE_THRESHOLD.copysign(tf.translation.x);
@@ -161,6 +197,7 @@ fn rebase_large_world(mut anchor: ResMut<TerrainAnchor>, mut cams: Query<&mut Tr
 
 /// Compare the camera altitude against [`ground_height`]; below ground =
 /// crash. `R` respawns at the initial position (offset-corrected).
+#[allow(clippy::too_many_arguments)] // bevy system: each param is an injected resource
 fn crash_check(
     mut commands: Commands,
     mut flight: ResMut<Flight>,
@@ -171,7 +208,9 @@ fn crash_check(
     mut cams: Query<&mut Transform, With<TerrainCamera>>,
     crash_text: Query<Entity, With<CrashText>>,
 ) {
-    let Ok(mut tf) = cams.single_mut() else { return };
+    let Ok(mut tf) = cams.single_mut() else {
+        return;
+    };
 
     if flight.crashed {
         if keys.just_pressed(KeyCode::KeyR) {
@@ -190,9 +229,17 @@ fn crash_check(
         commands.spawn((
             CrashText,
             Text::new("You crashed! Press R to reset."),
-            TextFont { font_size: 36.0, ..Default::default() },
+            TextFont {
+                font_size: 36.0,
+                ..Default::default()
+            },
             TextColor(Color::WHITE),
-            Node { position_type: PositionType::Absolute, left: Val::Percent(30.0), top: Val::Percent(40.0), ..Default::default() },
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(30.0),
+                top: Val::Percent(40.0),
+                ..Default::default()
+            },
         ));
     }
 }

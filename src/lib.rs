@@ -82,8 +82,10 @@ pub mod prelude {
     pub use crate::TerrainPlugin;
 }
 
+use bevy::asset::load_internal_asset;
 use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
+use bevy::render::render_resource::Shader;
 
 /// Ordering of the terrain systems within [`Update`]. Chained in declaration
 /// order; the sequence mirrors raytiles' frame loop and is load-bearing —
@@ -119,6 +121,15 @@ pub struct TerrainPlugin;
 
 impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
+        // embed the terrain shader into the binary so the plugin is
+        // self-contained — consumers need no asset-folder setup
+        load_internal_asset!(
+            app,
+            material::TERRAIN_SHADER_HANDLE,
+            "../assets/shaders/terrain.wgsl",
+            Shader::from_wgsl
+        );
+
         app.add_plugins(MaterialPlugin::<material::TerrainMaterial>::default())
             .init_resource::<config::WorldConfig>()
             .init_resource::<config::StreamingConfig>()
@@ -148,7 +159,8 @@ impl Plugin for TerrainPlugin {
                     store::reconcile.in_set(TerrainSet::Reconcile),
                     store::promote.in_set(TerrainSet::Promote),
                     store::update_desired.in_set(TerrainSet::UpdateDesired),
-                    (store::status, store::rebase, store::sync_rendering).in_set(TerrainSet::Status),
+                    (store::status, store::rebase, store::sync_rendering)
+                        .in_set(TerrainSet::Status),
                 ),
             );
     }

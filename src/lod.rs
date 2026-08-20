@@ -101,7 +101,13 @@ pub fn desired_tiles(opts: &LodOptions, cam: Vec3, out: &mut Vec<TileKey>) {
         }
     }
 
-    let ctx = Ctx { opts, sizes: &sizes, thresholds_sq: &thresholds_sq, cam, render_radius_sq };
+    let ctx = Ctx {
+        opts,
+        sizes: &sizes,
+        thresholds_sq: &thresholds_sq,
+        cam,
+        render_radius_sq,
+    };
     for dx in -r..=r {
         for dz in -r..=r {
             if dx * dx + dz * dz < allowed_radius {
@@ -154,7 +160,7 @@ mod tests {
             (0.5 * ts, 0.5 * ts),
             (0.25 * ts, 0.75 * ts),
             (3.3 * ts, -2.7 * ts),
-            (-1.0 * ts, -1.0 * ts),
+            (-ts, -ts),
         ];
         let alts = [2.0f32, 500.0, 5_000.0, 60_000.0];
         xz.iter()
@@ -197,7 +203,14 @@ mod tests {
         let c = run(&opts, Vec3::new(0.0, 60_000.0, 0.0));
         let count = |keys: &[TileKey], zoom: u8| keys.iter().filter(|k| k.zoom == zoom).count();
         // regenerate-and-pin values: printed on failure for easy updating
-        let summary = (a.len(), count(&a, 15), b.len(), count(&b, 9), c.len(), count(&c, 15));
+        let summary = (
+            a.len(),
+            count(&a, 15),
+            b.len(),
+            count(&b, 9),
+            c.len(),
+            count(&c, 15),
+        );
         assert_eq!(summary, snapshot_expected(), "snapshot drift: {summary:?}");
     }
 

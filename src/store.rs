@@ -8,12 +8,12 @@ use crate::height::HeightGrids;
 use crate::lod::{self, LodOptions, TileKey};
 use crate::material::{TerrainMaterial, TerrainParams};
 use crate::source::{TileDrop, TilePayload, TileRequest, TileSource};
+use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
 use bevy::render::mesh::PlaneMeshBuilder;
 use bevy::render::primitives::Aabb;
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Marker + data component on every resident tile entity.
@@ -97,8 +97,17 @@ pub fn zoom_size(world: &WorldConfig, zoom: u8) -> f64 {
 ///
 /// # Panics
 /// If the configured zoom range is outside `[MIN_ZOOM, MAX_ZOOM]` or inverted.
-pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, world: Res<WorldConfig>, net: Res<NetworkConfig>) {
-    assert!(world.base_zoom >= MIN_ZOOM && world.max_zoom <= MAX_ZOOM && world.max_zoom >= world.base_zoom);
+pub fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    world: Res<WorldConfig>,
+    net: Res<NetworkConfig>,
+) {
+    assert!(
+        world.base_zoom >= MIN_ZOOM
+            && world.max_zoom <= MAX_ZOOM
+            && world.max_zoom >= world.base_zoom
+    );
 
     // shared per-zoom grid meshes: resolution doubles 4 → 256 with zoom;
     // UVs span [0,1] (displacement samples by UV)
@@ -107,7 +116,9 @@ pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, world: Re
     for zoom in world.base_zoom..=world.max_zoom {
         let idx = (zoom - world.base_zoom) as usize;
         let size = zoom_size(&world, zoom) as f32 * world.skirt_overlap[idx];
-        let mesh: Mesh = PlaneMeshBuilder::from_length(size).subdivisions(res - 1).build();
+        let mesh: Mesh = PlaneMeshBuilder::from_length(size)
+            .subdivisions(res - 1)
+            .build();
         handles.push(meshes.add(mesh));
         res = (res * 2).min(256);
     }
@@ -124,6 +135,7 @@ pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, world: Re
 /// The covered-by rule protects against holes in the ground; its checks are
 /// gated on [`CoverageDirty`]. Eviction despawns the entity, drops the
 /// height grid, and lets the asset handles free the GPU resources.
+#[allow(clippy::too_many_arguments)] // bevy system: each param is an injected resource
 pub fn reconcile(
     mut commands: Commands,
     mut index: ResMut<TileIndex>,
@@ -176,7 +188,11 @@ fn covered(resident: &HashMap<TileKey, Entity>, world: &WorldConfig, key: TileKe
     }
     if key.zoom < world.max_zoom {
         let (cx, cz) = (key.x * 2, key.z * 2);
-        if has(key.zoom + 1, cx, cz) && has(key.zoom + 1, cx + 1, cz) && has(key.zoom + 1, cx, cz + 1) && has(key.zoom + 1, cx + 1, cz + 1) {
+        if has(key.zoom + 1, cx, cz)
+            && has(key.zoom + 1, cx + 1, cz)
+            && has(key.zoom + 1, cx, cz + 1)
+            && has(key.zoom + 1, cx + 1, cz + 1)
+        {
             return true;
         }
     }
@@ -238,18 +254,35 @@ pub fn promote(
 
     // budgeted promotion: entity + assets creation staggered per frame
     for _ in 0..streaming.max_promotions_per_frame {
-        let Some(payload) = pending.0.pop_front() else { break };
+        let Some(payload) = pending.0.pop_front() else {
+            break;
+        };
         let key = payload.key;
         index.loading.remove(&key);
         if !index.desired.contains(&key) || index.resident.contains_key(&key) {
             continue; // no longer wanted (payload data just drops)
         }
 
-        let albedo = images.add(make_image(payload.albedo.as_raw(), payload.albedo.width(), payload.albedo.height(), true));
+        let albedo = images.add(make_image(
+            payload.albedo.as_raw(),
+            payload.albedo.width(),
+            payload.albedo.height(),
+            true,
+        ));
         let height_rgba = rgb_to_rgba(&payload.height);
-        let heightmap = images.add(make_image(&height_rgba, payload.height.width(), payload.height.height(), false));
+        let heightmap = images.add(make_image(
+            &height_rgba,
+            payload.height.width(),
+            payload.height.height(),
+            false,
+        ));
         let normals_rgba = rgb_to_rgba(&payload.normals);
-        let normals = images.add(make_image(&normals_rgba, payload.normals.width(), payload.normals.height(), false));
+        let normals = images.add(make_image(
+            &normals_rgba,
+            payload.normals.width(),
+            payload.normals.height(),
+            false,
+        ));
         let material = materials.add(TerrainMaterial {
             albedo,
             heightmap,
@@ -278,7 +311,12 @@ pub fn promote(
                     center: Vec3A::new(0.0, MAX_WORLD_HEIGHT * 0.5 - 250.0, 0.0),
                     half_extents: Vec3A::new(half, MAX_WORLD_HEIGHT * 0.5 + 300.0, half),
                 },
-                Tile { key, size: size as f32, abs_x, abs_z },
+                Tile {
+                    key,
+                    size: size as f32,
+                    abs_x,
+                    abs_z,
+                },
             ))
             .id();
         index.resident.insert(key, entity);
@@ -291,6 +329,7 @@ pub fn promote(
 /// loading keys that fell out of the set (once, here — the set only changes
 /// in this system), and requests missing keys with their absolute provider
 /// coordinates resolved from the anchor.
+#[allow(clippy::too_many_arguments)] // bevy system: each param is an injected resource
 pub fn update_desired(
     mut index: ResMut<TileIndex>,
     mut last: ResMut<LastDesiredPos>,
@@ -322,7 +361,12 @@ pub fn update_desired(
     coverage_dirty.0 = true;
 
     // cancel once, here — the desired set only changes in this system
-    let stale: Vec<TileKey> = index.loading.iter().filter(|k| !index.desired.contains(k)).copied().collect();
+    let stale: Vec<TileKey> = index
+        .loading
+        .iter()
+        .filter(|k| !index.desired.contains(k))
+        .copied()
+        .collect();
     for key in stale {
         source.0.cancel(key);
     }
@@ -357,11 +401,18 @@ pub fn status(mut st: ResMut<TerrainStatus>, index: Res<TileIndex>, pending: Res
         st.progress = 0.0;
         return;
     }
-    let have = index.desired.iter().filter(|k| index.resident.contains_key(k)).count();
+    let have = index
+        .desired
+        .iter()
+        .filter(|k| index.resident.contains_key(k))
+        .count();
     st.progress = have as f32 / index.desired.len() as f32;
     if st.loading && index.loading.is_empty() && pending.0.is_empty() {
         st.loading = false;
-        info!("initial load complete: {} tiles resident", index.resident.len());
+        info!(
+            "initial load complete: {} tiles resident",
+            index.resident.len()
+        );
     }
 }
 
@@ -377,7 +428,10 @@ pub fn rebase(anchor: Res<TerrainAnchor>, mut tiles: Query<(&Tile, &mut Transfor
 }
 
 /// Push RenderingConfig changes to every live material.
-pub fn sync_rendering(rendering: Res<RenderingConfig>, mut materials: ResMut<Assets<TerrainMaterial>>) {
+pub fn sync_rendering(
+    rendering: Res<RenderingConfig>,
+    mut materials: ResMut<Assets<TerrainMaterial>>,
+) {
     if !rendering.is_changed() {
         return;
     }
@@ -404,9 +458,17 @@ fn rgb_to_rgba(img: &image::RgbImage) -> Vec<u8> {
 /// srgb=true for the albedo (color data); FALSE for heightmap/normals — an
 /// sRGB view would gamma-warp the Terrarium decode into garbage.
 fn make_image(data: &[u8], w: u32, h: u32, srgb: bool) -> Image {
-    let format = if srgb { TextureFormat::Rgba8UnormSrgb } else { TextureFormat::Rgba8Unorm };
+    let format = if srgb {
+        TextureFormat::Rgba8UnormSrgb
+    } else {
+        TextureFormat::Rgba8Unorm
+    };
     let mut img = Image::new(
-        Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
         TextureDimension::D2,
         data.to_vec(),
         format,

@@ -7,6 +7,7 @@
 #![allow(dead_code)]
 
 use crate::config::RenderingConfig;
+use bevy::asset::weak_handle;
 use bevy::pbr::{Material, MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshVertexBufferLayoutRef;
@@ -14,10 +15,13 @@ use bevy::render::render_resource::{
     AsBindGroup, RenderPipelineDescriptor, ShaderRef, ShaderType, SpecializedMeshPipelineError,
 };
 
-/// Asset path of the terrain WGSL (vertex displacement + lighting + fog).
-/// Ships in the crate's `assets/` directory; apps embedding bevytiles must
-/// make it reachable through their asset source.
-pub const TERRAIN_SHADER_PATH: &str = "shaders/terrain.wgsl";
+/// Handle of the terrain WGSL (vertex displacement + lighting + fog). The
+/// shader source lives in the crate's `assets/shaders/terrain.wgsl` but is
+/// **embedded into the binary** at compile time and registered under this
+/// handle by [`TerrainPlugin`](crate::TerrainPlugin) — consumers need no
+/// asset-folder setup.
+pub const TERRAIN_SHADER_HANDLE: Handle<Shader> =
+    weak_handle!("b7c1a9e4-52d8-4f3a-9c06-8e51d27f4b19");
 
 // allow: the ShaderType derive emits a hidden `check` fn whose spans land on
 // the fields, tripping dead_code warnings on this bevy/encase version
@@ -91,10 +95,10 @@ pub struct TerrainMaterial {
 
 impl Material for TerrainMaterial {
     fn vertex_shader() -> ShaderRef {
-        TERRAIN_SHADER_PATH.into()
+        TERRAIN_SHADER_HANDLE.into()
     }
     fn fragment_shader() -> ShaderRef {
-        TERRAIN_SHADER_PATH.into()
+        TERRAIN_SHADER_HANDLE.into()
     }
     fn specialize(
         _pipeline: &MaterialPipeline<Self>,

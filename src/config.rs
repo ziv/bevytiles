@@ -230,6 +230,10 @@ pub struct TerrainStatus {
 
 impl Default for TerrainStatus {
     fn default() -> Self {
-        Self { loading: true, progress: 0.0, resident: 0 }
+        Self {
+            loading: true,
+            progress: 0.0,
+            resident: 0,
+        }
     }
 }
