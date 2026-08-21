@@ -1,5 +1,14 @@
 # bevytiles
 
+<div align="center">
+    <img src="assets/icon.png" alt="logo" width="150"/>
+    <br />
+    <strong>3D geospatial engine for Bevy</strong>
+    <br />
+    <br />
+</div>
+
+
 Geo-spatial terrain streaming for [Bevy](https://bevyengine.org) — a Rust port of
 [raytiles](../raytiles). Streams satellite imagery, Terrarium heightmaps, and normal maps around a
 moving camera and renders them as GPU-displaced terrain with quadtree LOD, disk caching, terrain
