@@ -14,7 +14,14 @@ categories = ["game-development", "rendering"]
 bevy = "0.19"  # see the compatibility table in README.md
 crossbeam-channel = "0.5"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ureq = "2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ehttp = "0.5"
+# transitive; the `js` feature is required for wasm32-unknown-unknown
+getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 tempfile = "3"
@@ -28,3 +35,12 @@ opt-level = 1
 
 [[example]]
 name = "demo"
+
+# web bundle: LTO + stripped, used by web/build.sh (slow to build, much smaller)
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+strip = "debuginfo"
+panic = "abort"

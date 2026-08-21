@@ -4,3 +4,4 @@
 Cargo.lock
 .cache
 tmp.md
+/web/dist

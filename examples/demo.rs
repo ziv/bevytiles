@@ -4,6 +4,9 @@
 //!
 //! Controls: **A/D** roll, **Q/E** yaw, **W/S** pitch, **+/-** throttle,
 //! **R** reset after a crash. Change [`LAT`]/[`LON`] to fly anywhere.
+//!
+//! Runs natively (`cargo run --example demo`) and in the browser — see
+//! `web/README.md`.
 
 use bevy::prelude::*;
 use bevytiles::prelude::*;
@@ -42,7 +45,21 @@ fn main() {
     world.max_zoom = 17;
 
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "bevytiles demo".into(),
+                // on the web, attach to the canvas in web/index.html and
+                // keep browser shortcuts (F5, Ctrl+R, ...) working
+                #[cfg(target_arch = "wasm32")]
+                canvas: Some("#bevytiles".into()),
+                #[cfg(target_arch = "wasm32")]
+                fit_canvas_to_parent: true,
+                #[cfg(target_arch = "wasm32")]
+                prevent_default_event_handling: false,
+                ..default()
+            }),
+            ..default()
+        }))
         .insert_resource(ClearColor(SKY))
         .insert_resource(world)
         .insert_resource(rendering)

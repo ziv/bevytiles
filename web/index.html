@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bevytiles demo</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #66bfff; overflow: hidden; }
+    #bevytiles { display: block; width: 100%; height: 100%; outline: none; }
+    #help {
+      position: fixed; left: 12px; bottom: 12px; padding: 6px 10px;
+      font: 13px/1.4 system-ui, sans-serif; color: #fff;
+      background: rgba(0,0,0,.45); border-radius: 6px; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bevytiles"></canvas>
+  <div id="help">A/D roll · Q/E yaw · W/S pitch · +/- throttle · R reset</div>
+  <script type="module">
+    import init from "./demo.js";
+    init().catch((e) => {
+      // bevy's winit loop exits main via a control-flow exception; ignore it
+      if (!String(e).includes("Using exceptions for control flow")) throw e;
+    });
+  </script>
+</body>
+</html>
