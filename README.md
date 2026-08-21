@@ -62,3 +62,17 @@ normals. Large worlds use the raytiles rebase convention via the `TerrainAnchor`
 - Data: imagery © Esri; elevation/normals from the Mapzen/AWS terrain tiles. Mind their terms.
 - `cargo test` runs the full suite (lod snapshots, synthesis math, source integration against
   seeded caches — all offline).
+
+## License
+
+Dual-licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
+
+at your option, matching the Bevy ecosystem convention. Unless you explicitly state otherwise, any
+contribution intentionally submitted for inclusion in the work by you shall be dual licensed as
+above, without any additional terms or conditions.
+
+The license covers this code only; the map data the demo fetches (Esri imagery, Mapzen/AWS terrain
+tiles) is governed by the providers' own terms.
