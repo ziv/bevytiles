@@ -1,4 +1,3 @@
-# bevytiles
 
 <div align="center">
     <img src="assets/icon.png" alt="logo" width="150"/>
@@ -8,6 +7,14 @@
     <br />
 </div>
 
+
+![GitHub Release](https://badgen.net/github/release/ziv/bevytiles)
+![GitHub License](https://badgen.net/github/license/ziv/bevytiles)
+
+**Bevytiles** is a 3D geospatial engine 🌎 for [Bevy](https://bevy.org/). Designed to stream and render the real
+world in real time. It lets you visualize any location on Earth directly inside your Bevy games and applications.
+
+---
 
 Geo-spatial terrain streaming for [Bevy](https://bevyengine.org) — a Rust port of
 [raytiles](../raytiles). Streams satellite imagery, Terrarium heightmaps, and normal maps around a
