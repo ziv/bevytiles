@@ -40,7 +40,7 @@
 //! | module | role |
 //! |---|---|
 //! | [`lod`] | pure desired-set policy (which tiles *should* exist for a camera position) |
-//! | [`source`] | worker threads: HTTP + disk cache + PNG/JPEG decode + terrain synthesis, delivering whole-tile payloads through channels |
+//! | [`source`] | tile fetching (threads + disk cache natively, `fetch` futures on wasm) + PNG/JPEG decode + terrain synthesis, delivering whole-tile payloads through channels |
 //! | [`store`] | ECS systems tying it together: eviction, budgeted promotion, desired-set upkeep, status |
 //! | [`height`] | CPU-side height grids answering [`ground_height`](height::ground_height) queries |
 //!

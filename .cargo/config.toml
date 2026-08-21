@@ -1,0 +1,5 @@
+# `cargo run --target wasm32-unknown-unknown --example demo` serves the build
+# in a browser via wasm-server-runner (`cargo install wasm-server-runner`).
+# For a deployable bundle use `web/build.sh`.
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"

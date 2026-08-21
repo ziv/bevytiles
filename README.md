@@ -34,6 +34,19 @@ Flies over the Grand Canyon. **A/D** roll, **Q/E** yaw, **W/S** pitch, **+/-** t
 into the terrain. Tiles cache under `.cache/`; the first run downloads them (Esri imagery serves
 JPEG despite the endpoint name — decoding handles both).
 
+### In the browser
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install wasm-server-runner
+cargo run --example demo --target wasm32-unknown-unknown   # dev loop, opens on :1334
+./web/build.sh                                             # static bundle → web/dist
+```
+
+On `wasm32` the tile source uses browser `fetch` on Bevy's task pool instead of threads, and keeps
+native-zoom heightmaps in memory instead of a disk cache. Details and caveats in
+[`web/README.md`](web/README.md).
+
 ## Use as a library
 
 ```rust
@@ -62,7 +75,7 @@ normals. Large worlds use the raytiles rebase convention via the `TerrainAnchor`
 | module | role |
 |---|---|
 | `lod` | pure desired-set policy (snapshot-tested — values match the C++ engine exactly) |
-| `source` | worker threads: HTTP + disk cache + decode + synthesis, whole-tile payload channel |
+| `source` | tile fetching: native = worker threads + HTTP + disk cache; wasm = `fetch` futures + memory cache; decode + synthesis, whole-tile payload channel |
 | `store` | ECS systems: reconcile / promote / update_desired / status; one entity per tile |
 | `material` + `assets/shaders/terrain.wgsl` | displacement, lighting, fog |
 | `synth` | Terrarium float decode / quadrant upsample / carry-safe encode |
