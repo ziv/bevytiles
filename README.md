@@ -17,7 +17,7 @@ world in real time. It lets you visualize any location on Earth directly inside 
 ---
 
 Geo-spatial terrain streaming for [Bevy](https://bevyengine.org) — a Rust port of
-[raytiles](../raytiles). Streams satellite imagery, Terrarium heightmaps, and normal maps around a
+[raytiles](https://github.com/ziv/raytiles). Streams satellite imagery, Terrarium heightmaps, and normal maps around a
 moving camera and renders them as GPU-displaced terrain with quadtree LOD, disk caching, terrain
 synthesis above the provider zoom ceiling, and O(1) ground-height queries.
 
