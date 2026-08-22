@@ -28,7 +28,7 @@ const REBASE_THRESHOLD: f32 = 4096.0;
 fn main() {
     let rendering = RenderingConfig {
         fog_color: SKY,
-        skirt_drop: 1000.0,
+        // skirt_drop: 1000.0,
         ambient: Color::srgb_u8(200, 200, 200),
         ..Default::default()
     };

@@ -3,7 +3,7 @@ name = "bevytiles"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.95"
-description = "Geo-spatial terrain streaming engine for Bevy — a port of raytiles"
+description = "Geo-spatial terrain streaming engine for Bevy"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ziv/bevytiles"
 readme = "README.md"
@@ -11,7 +11,7 @@ keywords = ["bevy", "terrain", "gis", "streaming", "heightmap"]
 categories = ["game-development", "rendering"]
 
 [dependencies]
-bevy = "0.19"  # see the compatibility table in README.md
+bevy = { version = "0.19", features = ["bevy_dev_tools"] }
 crossbeam-channel = "0.5"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
