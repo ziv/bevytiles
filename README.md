@@ -10,6 +10,12 @@
 ![GitHub Release](https://badgen.net/github/release/ziv/bevytiles)
 ![GitHub License](https://badgen.net/github/license/ziv/bevytiles)
 
+
+[![Linux Build](https://github.com/ziv/bevytiles/actions/workflows/linux.yml/badge.svg)](https://github.com/ziv/bevytiles/actions/workflows/linux.yml)
+[![macOS Build](https://github.com/ziv/bevytiles/actions/workflows/macos.yml/badge.svg)](https://github.com/ziv/bevytiles/actions/workflows/macos.yml)
+[![Windows Build](https://github.com/ziv/bevytiles/actions/workflows/windows.yml/badge.svg)](https://github.com/ziv/bevytiles/actions/workflows/windows.yml)
+
+
 **Bevytiles** is a 3D geospatial engine 🌎 for [Bevy](https://bevy.org/). Designed to stream and render the real
 world in real time. It lets you visualize any location on Earth directly inside your Bevy games and applications.
 
@@ -19,13 +25,7 @@ software, lightweight GIS analysis, presentations, digital sand tables, and any 
 It provides precise, ground-truth altitude data, essential for accurate collision detection and spawning mechanics in
 games, as well as for topographical analysis in GIS workflows.
 
-
----
-
-Geo-spatial terrain streaming for [Bevy](https://bevyengine.org) — a Rust port of
-[raytiles](https://github.com/ziv/raytiles). Streams satellite imagery, Terrarium heightmaps, and normal maps around a
-moving camera and renders them as GPU-displaced terrain with quadtree LOD, disk caching, terrain
-synthesis above the provider zoom ceiling, and O(1) ground-height queries.
+Originally developed to power a flight simulator, Bevytiles was extracted into a lightweight, standalone library so it can be embedded seamlessly into any Bevy project.
 
 ## Run the demo
 
