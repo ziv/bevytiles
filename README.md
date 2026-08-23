@@ -27,6 +27,12 @@ games, as well as for topographical analysis in GIS workflows.
 
 Originally developed to power a flight simulator, Bevytiles was extracted into a lightweight, standalone library so it can be embedded seamlessly into any Bevy project.
 
+## Demo
+
+https://github.com/user-attachments/assets/c17c0c8b-c578-4573-8d11-23050c7aa4ba
+
+
+
 ## Run the demo
 
 ```sh
