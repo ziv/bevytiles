@@ -86,7 +86,7 @@ normals. Large worlds use the raytiles rebase convention via the `TerrainAnchor`
 | `lod`                                      | pure desired-set policy (snapshot-tested — values match the C++ engine exactly)                                                                   |
 | `source`                                   | tile fetching: native = worker threads + HTTP + disk cache; wasm = `fetch` futures + memory cache; decode + synthesis, whole-tile payload channel |
 | `store`                                    | ECS systems: reconcile / promote / update_desired / status; one entity per tile                                                                   |
-| `material` + `assets/shaders/terrain.wgsl` | displacement, lighting, fog                                                                                                                       |
+| `material` + `assets/shaders/terrain.wesl` | displacement, lighting, fog                                                                                                                       |
 | `synth`                                    | Terrarium float decode / quadrant upsample / carry-safe encode                                                                                    |
 | `height`                                   | uint16 height grids + bilinear `ground_height`                                                                                                    |
 
@@ -95,6 +95,7 @@ normals. Large worlds use the raytiles rebase convention via the `TerrainAnchor`
 | bevytiles | bevy |
 |-----------|------|
 | 0.1       | 0.19 |
+| 0.2       | 0.20 |
 
 ## Notes
 

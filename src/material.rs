@@ -16,8 +16,8 @@ use bevy::render::render_resource::{
 };
 use bevy::shader::ShaderRef;
 
-/// Handle of the terrain WGSL (vertex displacement + lighting + fog). The
-/// shader source lives in the crate's `assets/shaders/terrain.wgsl` but is
+/// Handle of the terrain shader (vertex displacement + lighting + fog). The
+/// shader source lives in the crate's `assets/shaders/terrain.wesl` but is
 /// **embedded into the binary** at compile time and registered under this
 /// handle by [`TerrainPlugin`](crate::TerrainPlugin) — consumers need no
 /// asset-folder setup.
@@ -26,8 +26,8 @@ pub const TERRAIN_SHADER_HANDLE: Handle<Shader> =
 
 // allow: the ShaderType derive emits a hidden `check` fn whose spans land on
 // the fields, tripping dead_code warnings on this bevy/encase version
-/// The uniform block handed to `terrain.wgsl` — the GPU mirror of
-/// [`RenderingConfig`]. Field order must match the WGSL `TerrainParams`
+/// The uniform block handed to `terrain.wesl` — the GPU mirror of
+/// [`RenderingConfig`]. Field order must match the shader's `TerrainParams`
 /// struct declaration exactly (encase lays it out in order).
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, ShaderType)]

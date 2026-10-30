@@ -1,10 +1,10 @@
 // Terrain displacement + lighting + fog. Port of the raytiles GLSL pair.
 
-#import bevy_pbr::{
+import bevy_pbr::render::{
     mesh_functions,
     view_transformations::position_world_to_clip,
     mesh_view_bindings::view,
-}
+};
 
 struct TerrainParams {
     fog_color: vec4<f32>,
@@ -18,15 +18,15 @@ struct TerrainParams {
     skirt_drop: f32,
 }
 
-// the material bind group index is a shader def since bevy 0.17 (wgpu 25
-// moved materials to group 3; the def tracks whatever the engine uses)
-@group(#{MATERIAL_BIND_GROUP}) @binding(0) var albedo_tex: texture_2d<f32>;
-@group(#{MATERIAL_BIND_GROUP}) @binding(1) var albedo_smp: sampler;
-@group(#{MATERIAL_BIND_GROUP}) @binding(2) var height_tex: texture_2d<f32>;
-@group(#{MATERIAL_BIND_GROUP}) @binding(3) var height_smp: sampler;
-@group(#{MATERIAL_BIND_GROUP}) @binding(4) var normal_tex: texture_2d<f32>;
-@group(#{MATERIAL_BIND_GROUP}) @binding(5) var normal_smp: sampler;
-@group(#{MATERIAL_BIND_GROUP}) @binding(6) var<uniform> params: TerrainParams;
+// the material bind group index is a constant Bevy supplies (WESL since bevy
+// 0.20; a `#{MATERIAL_BIND_GROUP}` shader def before)
+@group(constants::MATERIAL_BIND_GROUP) @binding(0) var albedo_tex: texture_2d<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(1) var albedo_smp: sampler;
+@group(constants::MATERIAL_BIND_GROUP) @binding(2) var height_tex: texture_2d<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(3) var height_smp: sampler;
+@group(constants::MATERIAL_BIND_GROUP) @binding(4) var normal_tex: texture_2d<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(5) var normal_smp: sampler;
+@group(constants::MATERIAL_BIND_GROUP) @binding(6) var<uniform> params: TerrainParams;
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,

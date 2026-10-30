@@ -126,8 +126,8 @@ impl Plugin for TerrainPlugin {
         load_internal_asset!(
             app,
             material::TERRAIN_SHADER_HANDLE,
-            "../assets/shaders/terrain.wgsl",
-            Shader::from_wgsl
+            "../assets/shaders/terrain.wesl",
+            Shader::from_wesl
         );
 
         app.add_plugins(MaterialPlugin::<material::TerrainMaterial>::default())

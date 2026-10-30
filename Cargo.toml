@@ -1,6 +1,6 @@
 [package]
 name = "bevytiles"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.95"
 description = "Geo-spatial terrain streaming engine for Bevy"
@@ -11,7 +11,7 @@ keywords = ["bevy", "terrain", "gis", "streaming", "heightmap"]
 categories = ["game-development", "rendering"]
 
 [dependencies]
-bevy = { version = "0.19", features = ["bevy_dev_tools"] }
+bevy = { version = "0.20", features = ["bevy_dev_tools"] }
 crossbeam-channel = "0.5"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
