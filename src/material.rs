@@ -70,8 +70,8 @@ impl TerrainParams {
     }
 }
 
-/// One material per resident tile: the three tile textures plus the shared
-/// parameter block. Bevy uploads/binds these; dropping the handles (with the
+/// One material per resident tile: the three tile textures, the shared
+/// parameter block and the tile's edge heights. Bevy uploads/binds these; dropping the handles (with the
 /// tile entity) frees the GPU resources.
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
 pub struct TerrainMaterial {
@@ -92,6 +92,10 @@ pub struct TerrainMaterial {
     /// plugin's `sync_rendering` system.
     #[uniform(6)]
     pub params: TerrainParams,
+    /// The edge vertices' heights (meters), shared with the neighbouring
+    /// tiles: a row per side, kept by [`edges`](crate::edges).
+    #[texture(7, sample_type = "float", filterable = false)]
+    pub edges: Handle<Image>,
 }
 
 impl Material for TerrainMaterial {

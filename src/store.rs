@@ -4,6 +4,7 @@
 //! engine (each tile carries a custom Aabb covering the displaced column).
 
 use crate::config::*;
+use crate::edges::TileBorders;
 use crate::height::HeightGrids;
 use crate::lod::{self, LodOptions, TileKey};
 use crate::material::{TerrainMaterial, TerrainParams};
@@ -111,12 +112,11 @@ pub fn setup(
     // shared per-zoom grid meshes with their skirts: resolution doubles
     // 4 → 256 with zoom; UVs span [0,1] (displacement samples by UV)
     let mut handles = Vec::new();
-    let mut res = 4u32;
     for zoom in world.base_zoom..=world.max_zoom {
         let idx = (zoom - world.base_zoom) as usize;
         let size = zoom_size(&world, zoom) as f32 * world.skirt_overlap[idx];
+        let res = crate::mesh::mesh_res(&world, zoom);
         handles.push(meshes.add(crate::mesh::tile_mesh(size, res)));
-        res = (res * 2).min(256);
     }
     commands.insert_resource(ZoomMeshes(handles));
     commands.insert_resource(SourceRes(TileSource::new(&net)));
@@ -136,6 +136,7 @@ pub fn reconcile(
     mut commands: Commands,
     mut index: ResMut<TileIndex>,
     mut grids: ResMut<HeightGrids>,
+    mut borders: ResMut<TileBorders>,
     mut coverage_dirty: ResMut<CoverageDirty>,
     world: Res<WorldConfig>,
     anchor: Res<TerrainAnchor>,
@@ -173,6 +174,7 @@ pub fn reconcile(
         commands.entity(entity).despawn();
         index.resident.remove(&key);
         grids.0.remove(&key);
+        borders.remove(key);
     }
     coverage_dirty.0 = false;
 }
@@ -217,6 +219,7 @@ pub fn promote(
     mut index: ResMut<TileIndex>,
     mut pending: ResMut<PendingPayloads>,
     mut grids: ResMut<HeightGrids>,
+    mut borders: ResMut<TileBorders>,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
     mut coverage_dirty: ResMut<CoverageDirty>,
@@ -279,10 +282,12 @@ pub fn promote(
             payload.normals.height(),
             false,
         ));
+        let edges = borders.insert(&mut images, &world, key, &payload.height);
         let material = materials.add(TerrainMaterial {
             albedo,
             heightmap,
             normals,
+            edges,
             params: TerrainParams::from_config(&rendering),
         });
 

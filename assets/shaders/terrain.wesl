@@ -27,6 +27,7 @@ struct TerrainParams {
 @group(constants::MATERIAL_BIND_GROUP) @binding(4) var normal_tex: texture_2d<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(5) var normal_smp: sampler;
 @group(constants::MATERIAL_BIND_GROUP) @binding(6) var<uniform> params: TerrainParams;
+@group(constants::MATERIAL_BIND_GROUP) @binding(7) var edge_tex: texture_2d<f32>;
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
@@ -49,12 +50,34 @@ fn terrarium_height(uv: vec2<f32>) -> f32 {
     return c.r * 256.0 + c.g + c.b / 256.0 - 32768.0;
 }
 
+// A vertex's height (meters): on the tile's edge the one it shares with its
+// neighbours (edges.rs, a row per side: v = 0, v = 1, u = 0, u = 1), else
+// the heightmap's.
+fn vertex_height(uv: vec2<f32>) -> f32 {
+    let res = f32(textureDimensions(edge_tex).x - 1u);
+    let along_u = i32(round(uv.x * res));
+    let along_v = i32(round(uv.y * res));
+    if uv.y <= 0.0 {
+        return textureLoad(edge_tex, vec2<i32>(along_u, 0), 0).r;
+    }
+    if uv.y >= 1.0 {
+        return textureLoad(edge_tex, vec2<i32>(along_u, 1), 0).r;
+    }
+    if uv.x <= 0.0 {
+        return textureLoad(edge_tex, vec2<i32>(along_v, 2), 0).r;
+    }
+    if uv.x >= 1.0 {
+        return textureLoad(edge_tex, vec2<i32>(along_v, 3), 0).r;
+    }
+    return terrarium_height(uv);
+}
+
 @vertex
 fn vertex(v: Vertex) -> VertexOutput {
     var out: VertexOutput;
 
     var pos = v.position;
-    pos.y += terrarium_height(v.uv) * params.height_scale;
+    pos.y += vertex_height(v.uv) * params.height_scale;
 
     // the skirt's ring hangs below the edge above it, filling LOD cracks;
     // the surface's own edge vertices stay put

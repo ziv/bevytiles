@@ -13,6 +13,12 @@ use bevy::prelude::*;
 pub const ATTRIBUTE_SKIRT: MeshVertexAttribute =
     MeshVertexAttribute::new("TerrainSkirt", 0x7e1e5c17, VertexFormat::Float32);
 
+/// Quads a side of the mesh of a tile at `zoom`: 4 at the base zoom,
+/// doubling per zoom up to 256 (a heightmap's texels).
+pub fn mesh_res(world: &crate::config::WorldConfig, zoom: u8) -> u32 {
+    (4u32 << (zoom - world.base_zoom).min(6)).min(256)
+}
+
 /// A square tile mesh of side `size` with `res` quads a side, centred on the
 /// origin in XZ. UVs run `[0, 1]` along +X and +Z, as Bevy's plane, so the
 /// shader samples the heightmap by UV; each skirt vertex repeats the UV of the
