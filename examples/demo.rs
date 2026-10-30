@@ -28,7 +28,6 @@ const REBASE_THRESHOLD: f32 = 4096.0;
 fn main() {
     let rendering = RenderingConfig {
         fog_color: SKY,
-        // skirt_drop: 1000.0,
         ambient: Color::srgb_u8(200, 200, 200),
         ..Default::default()
     };
@@ -39,7 +38,6 @@ fn main() {
     };
 
     let mut world = WorldConfig::from_lat_lon(LAT, LON);
-    world.skirt_overlap = [1.01; ZOOM_LEVELS];
     // opt into greater zoom: imagery fetches natively, heightmaps above z15
     // are synthesized, normals default to flat
     world.max_zoom = 17;

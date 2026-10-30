@@ -39,6 +39,8 @@ pub struct WorldConfig {
     /// World size (meters) of one tile at `base_zoom`.
     pub tile_size: f32,
     /// Per-zoom mesh overlap factors, `skirt_overlap[zoom - base_zoom]`.
+    /// Leave at 1.0: the skirts ([`RenderingConfig::skirt_drop`]) fill the
+    /// cracks, and overlapping tiles fight over the overlap.
     pub skirt_overlap: [f32; ZOOM_LEVELS],
     /// World-space offset of the anchor point inside its anchor tile; filled
     /// by `from_lat_lon` so the origin sits exactly on the coordinate.
@@ -126,7 +128,9 @@ pub struct RenderingConfig {
     pub fog_start: f32,
     /// Distance (meters) at which fog fully replaces the terrain color.
     pub fog_end: f32,
-    /// Vertical drop (meters) of skirt geometry below tile edges; 0 disables.
+    /// Depth (meters) of the skirt hung under every tile edge to fill cracks
+    /// between neighbouring tiles; the surface itself is not lowered. 0
+    /// disables it.
     pub skirt_drop: f32,
     /// Match this to your sky color for a seamless horizon.
     pub fog_color: Color,
@@ -148,7 +152,7 @@ impl Default for RenderingConfig {
         Self {
             fog_start: 100_000.0,
             fog_end: 150_000.0,
-            skirt_drop: 0.0,
+            skirt_drop: 50.0,
             fog_color: Color::srgb(0.0, 0.0, 1.0),
             ambient: Color::WHITE,
             sun_direction: Vec3::new(0.1, 1.0, 0.1),

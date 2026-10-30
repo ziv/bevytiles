@@ -33,6 +33,7 @@ struct Vertex {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
+    @location(3) skirt: f32,
 };
 
 struct VertexOutput {
@@ -55,13 +56,9 @@ fn vertex(v: Vertex) -> VertexOutput {
     var pos = v.position;
     pos.y += terrarium_height(v.uv) * params.height_scale;
 
-    // edge vertices drop by the skirt amount to hide LOD cracks
-    let e = 0.000001;
-    let edge = clamp(
-        step(v.uv.x, e) + step(1.0 - e, v.uv.x) + step(v.uv.y, e) + step(1.0 - e, v.uv.y),
-        0.0, 1.0,
-    );
-    pos.y -= params.skirt_drop * params.height_scale * edge;
+    // the skirt's ring hangs below the edge above it, filling LOD cracks;
+    // the surface's own edge vertices stay put
+    pos.y -= params.skirt_drop * params.height_scale * v.skirt;
 
     let world_from_local = mesh_functions::get_world_from_local(v.instance_index);
     let world_position = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(pos, 1.0));

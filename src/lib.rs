@@ -67,6 +67,7 @@ pub mod config;
 pub mod height;
 pub mod lod;
 pub mod material;
+pub mod mesh;
 pub mod source;
 pub mod store;
 pub mod synth;

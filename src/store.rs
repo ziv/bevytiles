@@ -12,7 +12,6 @@ use bevy::asset::RenderAssetUsages;
 use bevy::camera::primitives::Aabb;
 use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
-use bevy::render::mesh::PlaneMeshBuilder;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -109,17 +108,14 @@ pub fn setup(
             && world.max_zoom >= world.base_zoom
     );
 
-    // shared per-zoom grid meshes: resolution doubles 4 → 256 with zoom;
-    // UVs span [0,1] (displacement samples by UV)
+    // shared per-zoom grid meshes with their skirts: resolution doubles
+    // 4 → 256 with zoom; UVs span [0,1] (displacement samples by UV)
     let mut handles = Vec::new();
     let mut res = 4u32;
     for zoom in world.base_zoom..=world.max_zoom {
         let idx = (zoom - world.base_zoom) as usize;
         let size = zoom_size(&world, zoom) as f32 * world.skirt_overlap[idx];
-        let mesh: Mesh = PlaneMeshBuilder::from_length(size)
-            .subdivisions(res - 1)
-            .build();
-        handles.push(meshes.add(mesh));
+        handles.push(meshes.add(crate::mesh::tile_mesh(size, res)));
         res = (res * 2).min(256);
     }
     commands.insert_resource(ZoomMeshes(handles));
