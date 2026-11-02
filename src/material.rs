@@ -48,7 +48,7 @@ pub struct TerrainParams {
     pub height_scale: f32,
     /// Normal-map contrast multiplier.
     pub normals_scale: f32,
-    /// Vertical skirt drop (meters) applied to mesh-edge vertices.
+    /// Vertical drop (meters) of the skirt below the tile edges.
     pub skirt_drop: f32,
 }
 
@@ -70,8 +70,8 @@ impl TerrainParams {
     }
 }
 
-/// One material per resident tile: the three tile textures plus the shared
-/// parameter block. Bevy uploads/binds these; dropping the handles (with the
+/// One material per resident tile: the three tile textures, the shared
+/// parameter block and the tile's edge heights. Bevy uploads/binds these; dropping the handles (with the
 /// tile entity) frees the GPU resources.
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
 pub struct TerrainMaterial {
@@ -92,6 +92,10 @@ pub struct TerrainMaterial {
     /// plugin's `sync_rendering` system.
     #[uniform(6)]
     pub params: TerrainParams,
+    /// The edge vertices' heights (meters), shared with the neighbouring
+    /// tiles: a row per side, kept by [`edges`](crate::edges).
+    #[texture(7, sample_type = "float", filterable = false)]
+    pub edges: Handle<Image>,
 }
 
 impl Material for TerrainMaterial {
@@ -107,11 +111,12 @@ impl Material for TerrainMaterial {
         layout: &MeshVertexBufferLayoutRef,
         _key: MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
-        // we only consume position/normal/uv; pin the buffer layout explicitly
+        // we only consume position/normal/uv/skirt; pin the buffer layout explicitly
         let vertex_layout = layout.0.get_layout(&[
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
             Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
             Mesh::ATTRIBUTE_UV_0.at_shader_location(2),
+            crate::mesh::ATTRIBUTE_SKIRT.at_shader_location(3),
         ])?;
         descriptor.vertex.buffers = vec![vertex_layout];
         Ok(())

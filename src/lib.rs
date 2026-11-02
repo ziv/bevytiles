@@ -64,9 +64,11 @@
 #![warn(missing_docs)]
 
 pub mod config;
+pub mod edges;
 pub mod height;
 pub mod lod;
 pub mod material;
+pub mod mesh;
 pub mod source;
 pub mod store;
 pub mod synth;
@@ -138,6 +140,7 @@ impl Plugin for TerrainPlugin {
             .init_resource::<config::TerrainAnchor>()
             .init_resource::<config::TerrainStatus>()
             .init_resource::<height::HeightGrids>()
+            .init_resource::<edges::TileBorders>()
             .init_resource::<store::TileIndex>()
             .init_resource::<store::PendingPayloads>()
             .init_resource::<store::LastDesiredPos>()
@@ -159,7 +162,12 @@ impl Plugin for TerrainPlugin {
                     store::reconcile.in_set(TerrainSet::Reconcile),
                     store::promote.in_set(TerrainSet::Promote),
                     store::update_desired.in_set(TerrainSet::UpdateDesired),
-                    (store::status, store::rebase, store::sync_rendering)
+                    (
+                        store::status,
+                        store::rebase,
+                        store::sync_rendering,
+                        edges::stitch,
+                    )
                         .in_set(TerrainSet::Status),
                 ),
             );
