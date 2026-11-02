@@ -1,5 +1,10 @@
 {
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "packages": {
-    "target/package": "0.1.0"
+    ".": {
+      "release-type": "rust",
+      "package-name": "bevytiles",
+      "include-component-in-tag": false
+    }
   }
 }
