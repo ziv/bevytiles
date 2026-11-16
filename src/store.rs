@@ -10,6 +10,7 @@ use crate::material::{TerrainMaterial, TerrainParams};
 use crate::source::{TileDrop, TilePayload, TileRequest, TileSource};
 use bevy::asset::RenderAssetUsages;
 use bevy::camera::primitives::Aabb;
+use bevy::camera::visibility::NoAutoAabb;
 use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
 use bevy::render::mesh::PlaneMeshBuilder;
@@ -311,6 +312,10 @@ pub fn promote(
                     center: Vec3A::new(0.0, MAX_WORLD_HEIGHT * 0.5 - 250.0, 0.0),
                     half_extents: Vec3A::new(half, MAX_WORLD_HEIGHT * 0.5 + 300.0, half),
                 },
+                // without this, bevy's `calculate_bounds` replaces the Aabb
+                // above with the flat mesh's own bounds on the spawn frame
+                // (`Changed<Mesh3d>`), culling near tiles as if at y = 0
+                NoAutoAabb,
                 Tile {
                     key,
                     size: size as f32,
